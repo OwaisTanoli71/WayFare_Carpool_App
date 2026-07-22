@@ -108,6 +108,8 @@ export default function Login() {
       if (error) {
         if (error.message === 'Email not confirmed' || error.message.includes('Email not confirmed')) {
           setError('Check your inbox to confirm your email first.')
+        } else if (error.message === 'Failed to fetch' || error.message.includes('Failed to fetch')) {
+          setError('Network connection error. Please refresh the page or check your internet.')
         } else {
           setError(error.message)
         }
