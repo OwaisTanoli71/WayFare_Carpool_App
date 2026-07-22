@@ -25,6 +25,7 @@ import OfflineIndicator from './components/OfflineIndicator'
 import HelpWidget from './components/HelpWidget'
 import DashboardLayout from './components/DashboardLayout'
 import InactivityTracker from './components/InactivityTracker'
+import PwaUpdatePrompt from './components/PwaUpdatePrompt'
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
       <InactivityTracker />
       <OfflineIndicator />
       <InstallPrompt />
+      <PwaUpdatePrompt />
       <HelpWidget />
       <Routes>
         <Route path="/" element={<Landing />} />

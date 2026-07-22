@@ -56,6 +56,9 @@ export default function AdminDashboard() {
 
   // Modals & Actions State
   const [reviewingDoc, setReviewingDoc] = useState(null)
+  const [inspectingUser, setInspectingUser] = useState(null) // selected user profile object for admin inspection modal
+  const [userRides, setUserRides] = useState([])
+  const [loadingUserRides, setLoadingUserRides] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [showAddUserModal, setShowAddUserModal] = useState(false)
   const [fullscreenImage, setFullscreenImage] = useState(null) // { url, title }
@@ -122,6 +125,30 @@ export default function AdminDashboard() {
       supabase.removeChannel(channel)
     }
   }, [])
+
+  // Fetch ride history for inspected user profile modal
+  useEffect(() => {
+    if (!inspectingUser) {
+      setUserRides([])
+      return
+    }
+    async function fetchUserDetailRides() {
+      setLoadingUserRides(true)
+      try {
+        const { data } = await supabase
+          .from('rides')
+          .select('*')
+          .eq('driver_id', inspectingUser.id)
+          .order('created_at', { ascending: false })
+        if (data) setUserRides(data)
+      } catch (err) {
+        console.error("Error fetching user rides:", err)
+      } finally {
+        setLoadingUserRides(false)
+      }
+    }
+    fetchUserDetailRides()
+  }, [inspectingUser])
 
   const logActivity = async (action_type, target_entity, details) => {
     const newLog = {
@@ -448,37 +475,58 @@ export default function AdminDashboard() {
       {/* Main Layout Area */}
       <main className="main bg-[#0B0E14] min-h-screen text-white pb-16">
         {/* Header */}
-        <header className="flex items-center justify-between mb-8 w-full gap-3 pt-2">
-          <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-            <button 
-              className="md:hidden shrink-0 flex items-center justify-center w-10 h-10 rounded-xl bg-ink-800/80 border border-ink-700 text-ink-200 hover:text-white hover:bg-ink-700 transition-colors shadow-sm"
-              onClick={() => setMobileMenuOpen(true)}
-            >
-              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="4" y1="12" x2="20" y2="12"></line>
-                <line x1="4" y1="6" x2="20" y2="6"></line>
-                <line x1="4" y1="18" x2="14" y2="18"></line>
-              </svg>
-            </button>
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 w-full gap-3 pt-2 border-b border-ink-700/60 pb-4">
+          <div className="flex items-center justify-between w-full sm:w-auto gap-3">
+            <div className="flex items-center gap-3">
+              <button 
+                className="md:hidden shrink-0 flex items-center justify-center w-10 h-10 rounded-xl bg-ink-800/80 border border-ink-700 text-ink-200 hover:text-white hover:bg-ink-700 transition-colors shadow-sm"
+                onClick={() => setMobileMenuOpen(true)}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="4" y1="12" x2="20" y2="12"></line>
+                  <line x1="4" y1="6" x2="20" y2="6"></line>
+                  <line x1="4" y1="18" x2="14" y2="18"></line>
+                </svg>
+              </button>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-white truncate">
-                  {getTabTitle()}
-                </h1>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="font-display text-lg sm:text-2xl md:text-3xl font-bold text-white leading-tight">
+                    {getTabTitle()}
+                  </h1>
+                </div>
                 {isSuperAdmin && (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full shadow-[0_0_12px_rgba(245,158,11,0.2)]">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" /> Super Admin Console
                   </span>
                 )}
               </div>
-              <p className="text-xs md:text-sm text-ink-400 truncate mt-0.5 hidden sm:block">
-                Wayfare Master Security & Control System
-              </p>
+            </div>
+
+            {/* Mobile Header Right Controls */}
+            <div className="sm:hidden flex items-center gap-2">
+              <button 
+                onClick={fetchAllData}
+                disabled={loadingData}
+                className="p-2 rounded-xl border border-ink-700/80 bg-[#121721] text-xs font-semibold text-ink-100 hover:text-white shadow-sm flex items-center gap-1.5"
+                title="Refresh System Data"
+              >
+                <svg className={`w-4 h-4 ${loadingData ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span className="text-[11px]">Refresh</span>
+              </button>
+              <div 
+                className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shadow-md text-[#14181C] shrink-0"
+                style={{ background: 'linear-gradient(155deg, #EF4444, #DC2626)' }}
+              >
+                {user?.name ? user.name[0].toUpperCase() : 'A'}
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3 shrink-0">
+          {/* Desktop Header Right Controls */}
+          <div className="hidden sm:flex items-center gap-2 md:gap-3 shrink-0">
             <button 
               onClick={fetchAllData}
               disabled={loadingData}
@@ -937,14 +985,21 @@ export default function AdminDashboard() {
                       </tr>
                     ) : (
                       filteredUsers.map((u) => (
-                        <tr key={u.id} className="hover:bg-ink-800/30 transition-colors">
+                        <tr key={u.id} className="hover:bg-ink-800/40 transition-colors">
                           <td className="px-4 py-3.5">
-                            <div className="flex items-center gap-3">
-                              <div className="h-8 w-8 rounded-full bg-beacon/20 text-beacon flex items-center justify-center font-bold text-xs">
+                            <div 
+                              onClick={() => setInspectingUser(u)}
+                              className="flex items-center gap-3 cursor-pointer group hover:opacity-80 transition-opacity"
+                              title="Click to view full user profile"
+                            >
+                              <div className="h-8 w-8 rounded-full bg-beacon/20 text-beacon flex items-center justify-center font-bold text-xs group-hover:scale-105 transition-transform">
                                 {u.name ? u.name[0].toUpperCase() : 'U'}
                               </div>
                               <div>
-                                <div className="font-bold text-white">{u.name || 'Unnamed User'}</div>
+                                <div className="font-bold text-white group-hover:text-amber-400 transition-colors flex items-center gap-1.5">
+                                  {u.name || 'Unnamed User'}
+                                  <span className="text-[10px] font-normal text-amber-400/80 underline opacity-0 group-hover:opacity-100 transition-opacity">View Profile →</span>
+                                </div>
                                 <div className="text-xs text-ink-400">{u.email}</div>
                               </div>
                             </div>
@@ -976,19 +1031,28 @@ export default function AdminDashboard() {
                             </span>
                           </td>
                           <td className="px-4 py-3.5 text-right">
-                            <button
-                              onClick={() => handleToggleUserActive(u.id, u.status)}
-                              disabled={u.email === 'admin@wayfare.com' || u.role === 'super_admin'}
-                              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                                (u.email === 'admin@wayfare.com' || u.role === 'super_admin')
-                                  ? 'opacity-40 cursor-not-allowed bg-ink-800 text-ink-500 border border-ink-700'
-                                  : u.status === 'deactivated' 
-                                    ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30'
-                                    : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20'
-                              }`}
-                            >
-                              {(u.email === 'admin@wayfare.com' || u.role === 'super_admin') ? 'Protected' : u.status === 'deactivated' ? 'Activate' : 'Deactivate'}
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => setInspectingUser(u)}
+                                className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 text-xs font-bold transition-all flex items-center gap-1 shadow-sm"
+                                title="View User Profile & Rides"
+                              >
+                                <span>👁️</span> View Profile
+                              </button>
+                              <button
+                                onClick={() => handleToggleUserActive(u.id, u.status)}
+                                disabled={u.email === 'admin@wayfare.com' || u.role === 'super_admin'}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                  (u.email === 'admin@wayfare.com' || u.role === 'super_admin')
+                                    ? 'opacity-40 cursor-not-allowed bg-ink-800 text-ink-500 border border-ink-700'
+                                    : u.status === 'deactivated' 
+                                      ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30'
+                                      : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20'
+                                }`}
+                              >
+                                {(u.email === 'admin@wayfare.com' || u.role === 'super_admin') ? 'Protected' : u.status === 'deactivated' ? 'Activate' : 'Deactivate'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -1400,16 +1464,20 @@ export default function AdminDashboard() {
                             <th className="px-4 py-3 font-semibold">Email</th>
                             <th className="px-4 py-3 font-semibold">Privilege Level</th>
                             <th className="px-4 py-3 font-semibold">Status</th>
+                            <th className="px-4 py-3 font-semibold text-right">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-ink-700/50">
                           {users.filter(u => u.role === 'admin' || u.role === 'super_admin' || u.email === 'admin@wayfare.com').map((adm) => (
                             <tr key={adm.id} className="hover:bg-ink-800/30 transition-colors">
-                              <td className="px-4 py-3.5 font-bold text-white flex items-center gap-2">
-                                <span className="h-7 w-7 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-xs">
+                              <td 
+                                onClick={() => setInspectingUser(adm)}
+                                className="px-4 py-3.5 font-bold text-white flex items-center gap-2 cursor-pointer group"
+                              >
+                                <span className="h-7 w-7 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-xs group-hover:scale-105 transition-transform">
                                   {adm.name ? adm.name[0].toUpperCase() : 'A'}
                                 </span>
-                                {adm.name || 'System Admin'}
+                                <span className="group-hover:text-amber-400 transition-colors">{adm.name || 'System Admin'}</span>
                               </td>
                               <td className="px-4 py-3.5 text-ink-300">{adm.email}</td>
                               <td className="px-4 py-3.5">
@@ -1425,6 +1493,14 @@ export default function AdminDashboard() {
                                 <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Active
                                 </span>
+                              </td>
+                              <td className="px-4 py-3.5 text-right">
+                                <button
+                                  onClick={() => setInspectingUser(adm)}
+                                  className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 text-xs font-bold transition-all shadow-sm"
+                                >
+                                  👁️ View Profile
+                                </button>
                               </td>
                             </tr>
                           ))}
@@ -1751,6 +1827,238 @@ export default function AdminDashboard() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* USER PROFILE & ACTIVITY DOSSIER MODAL */}
+      <AnimatePresence>
+        {inspectingUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={() => setInspectingUser(null)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-3xl rounded-3xl border border-ink-700 bg-[#121622] p-6 sm:p-8 shadow-2xl z-10 max-h-[90vh] flex flex-col">
+              
+              {/* Modal Header */}
+              <div className="flex items-start justify-between pb-4 border-b border-ink-700/80">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold text-xl shadow-md">
+                    {inspectingUser.name ? inspectingUser.name[0].toUpperCase() : 'U'}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold font-display text-white">{inspectingUser.name || 'Unnamed User'}</h2>
+                      <span className="capitalize text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-ink-800 border border-ink-700 text-ink-200">
+                        {inspectingUser.role || 'rider'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-ink-400 mt-0.5">{inspectingUser.email} • ID: {inspectingUser.id?.slice(0, 8)}...</p>
+                  </div>
+                </div>
+
+                <button onClick={() => setInspectingUser(null)} className="text-ink-400 hover:text-white p-2 rounded-xl hover:bg-ink-800 transition-colors">✕</button>
+              </div>
+
+              {/* Modal Content Scrollable Area */}
+              <div className="py-5 overflow-y-auto flex-1 space-y-6 custom-scrollbar">
+                
+                {/* 1. Account Attributes Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3.5 rounded-2xl border border-ink-700/60 bg-ink-900/60 space-y-1">
+                    <div className="text-[10px] font-bold text-ink-400 uppercase">City</div>
+                    <div className="text-xs font-bold text-white truncate">{inspectingUser.city || 'Islamabad'}</div>
+                  </div>
+                  <div className="p-3.5 rounded-2xl border border-ink-700/60 bg-ink-900/60 space-y-1">
+                    <div className="text-[10px] font-bold text-ink-400 uppercase">Gender</div>
+                    <div className="text-xs font-bold text-white capitalize">{inspectingUser.gender || 'Unspecified'}</div>
+                  </div>
+                  <div className="p-3.5 rounded-2xl border border-ink-700/60 bg-ink-900/60 space-y-1">
+                    <div className="text-[10px] font-bold text-ink-400 uppercase">Verification</div>
+                    <div className="text-xs font-bold text-emerald-400 flex items-center gap-1">
+                      {inspectingUser.verified ? '✅ ID Verified' : '❌ Unverified'}
+                    </div>
+                  </div>
+                  <div className="p-3.5 rounded-2xl border border-ink-700/60 bg-ink-900/60 space-y-1">
+                    <div className="text-[10px] font-bold text-ink-400 uppercase">Status</div>
+                    <div className={`text-xs font-bold ${inspectingUser.status === 'deactivated' ? 'text-red-400' : 'text-emerald-400'}`}>
+                      {inspectingUser.status === 'deactivated' ? '🚫 Deactivated' : '⚡ Active Account'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. User Rides History */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-display text-sm font-bold text-white uppercase tracking-wider text-amber-400">
+                      🚗 User Posted Rides History ({userRides.length})
+                    </h3>
+                  </div>
+
+                  <div className="rounded-2xl border border-ink-700/80 overflow-hidden bg-ink-900/40">
+                    {loadingUserRides ? (
+                      <div className="p-6 text-center text-xs text-ink-400">Loading user rides...</div>
+                    ) : userRides.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-ink-400">No posted rides found for this user.</div>
+                    ) : (
+                      <table className="w-full text-left text-xs text-ink-100">
+                        <thead className="border-b border-ink-700 bg-ink-800/80 text-[10px] uppercase text-ink-400 font-semibold">
+                          <tr>
+                            <th className="px-3.5 py-2.5">Route</th>
+                            <th className="px-3.5 py-2.5">Fare</th>
+                            <th className="px-3.5 py-2.5">Seats</th>
+                            <th className="px-3.5 py-2.5">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-ink-700/40">
+                          {userRides.map(r => (
+                            <tr key={r.id} className="hover:bg-ink-800/30">
+                              <td className="px-3.5 py-2.5 font-bold text-white">
+                                {r.from_location} &rarr; {r.to_location}
+                              </td>
+                              <td className="px-3.5 py-2.5 text-amber-400 font-bold">Rs {r.price}</td>
+                              <td className="px-3.5 py-2.5 text-ink-300">{r.seats} seats</td>
+                              <td className="px-3.5 py-2.5">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                  r.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
+                                  r.status === 'cancelled' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
+                                }`}>
+                                  {r.status || 'open'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Modal Footer Admin Actions */}
+              <div className="pt-4 border-t border-ink-700/80 flex flex-wrap items-center justify-between gap-3">
+                <button
+                  onClick={() => {
+                    const verificationDoc = verifications.find(v => v.user_id === inspectingUser.id)
+                    if (verificationDoc) {
+                      setReviewingDoc(verificationDoc)
+                    } else {
+                      alert("No verification document uploaded for this user.")
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-teal bg-teal/10 hover:bg-teal/20 border border-teal/20"
+                >
+                  📄 View ID Verification Docs
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      handleToggleUserActive(inspectingUser.id, inspectingUser.status)
+                      setInspectingUser(null)
+                    }}
+                    disabled={inspectingUser.email === 'admin@wayfare.com' || inspectingUser.role === 'super_admin'}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                      (inspectingUser.email === 'admin@wayfare.com' || inspectingUser.role === 'super_admin')
+                        ? 'opacity-40 cursor-not-allowed bg-ink-800 text-ink-500'
+                        : inspectingUser.status === 'deactivated'
+                          ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30'
+                          : 'bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30'
+                    }`}
+                  >
+                    {inspectingUser.status === 'deactivated' ? '⚡ Activate Account' : '🚫 Deactivate Account'}
+                  </button>
+                  <button
+                    onClick={() => setInspectingUser(null)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-ink-800 text-ink-300 hover:text-white"
+                  >
+                    Close Dossier
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ADMIN MOBILE BOTTOM NAVIGATION BAR FOR FAST ACCESS */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0F131C]/95 backdrop-blur-xl border-t border-ink-700/80 px-2 py-2 flex items-center justify-around shadow-2xl">
+        {/* 1. Overview */}
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${
+            activeTab === 'overview' 
+              ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold scale-105' 
+              : 'text-ink-300 hover:text-white'
+          }`}
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+          <span className="text-[10px]">Overview</span>
+        </button>
+
+        {/* 2. Verifications */}
+        <button
+          onClick={() => setActiveTab('verifications')}
+          className={`relative flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${
+            activeTab === 'verifications' 
+              ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold scale-105' 
+              : 'text-ink-300 hover:text-white'
+          }`}
+        >
+          {pendingVerificationsCount > 0 && (
+            <span className="absolute -top-1 right-1 w-4 h-4 rounded-full bg-amber-400 text-ink-950 text-[9px] font-extrabold flex items-center justify-center animate-bounce">
+              {pendingVerificationsCount}
+            </span>
+          )}
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <span className="text-[10px]">Docs</span>
+        </button>
+
+        {/* 3. Rides */}
+        <button
+          onClick={() => setActiveTab('rides')}
+          className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${
+            activeTab === 'rides' 
+              ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold scale-105' 
+              : 'text-ink-300 hover:text-white'
+          }`}
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+          </svg>
+          <span className="text-[10px]">Rides</span>
+        </button>
+
+        {/* 4. Users */}
+        <button
+          onClick={() => setActiveTab('users')}
+          className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${
+            activeTab === 'users' 
+              ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold scale-105' 
+              : 'text-ink-300 hover:text-white'
+          }`}
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <span className="text-[10px]">Users</span>
+        </button>
+
+        {/* 5. Reviews */}
+        <button
+          onClick={() => setActiveTab('reviews')}
+          className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${
+            activeTab === 'reviews' 
+              ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold scale-105' 
+              : 'text-ink-300 hover:text-white'
+          }`}
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+          </svg>
+          <span className="text-[10px]">Reviews</span>
+        </button>
+      </nav>
     </>
   )
 }
