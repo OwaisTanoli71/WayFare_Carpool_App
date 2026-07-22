@@ -58,6 +58,9 @@ export default function AdminDashboard() {
   const [reviewingDoc, setReviewingDoc] = useState(null)
   const [processing, setProcessing] = useState(false)
   const [showAddUserModal, setShowAddUserModal] = useState(false)
+  const [fullscreenImage, setFullscreenImage] = useState(null) // { url, title }
+  const [zoomScale, setZoomScale] = useState(1)
+  const [rotationDeg, setRotationDeg] = useState(0)
 
   // Filters & Search
   const [userSearch, setUserSearch] = useState('')
@@ -1440,56 +1443,252 @@ export default function AdminDashboard() {
       <AnimatePresence>
         {reviewingDoc && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setReviewingDoc(null)} />
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-4xl rounded-3xl border border-ink-700 bg-[#14181C] p-6 shadow-2xl z-10 max-h-[90vh] flex flex-col">
-              <div className="flex items-center justify-between pb-4 border-b border-ink-700">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={() => setReviewingDoc(null)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-5xl rounded-3xl border border-ink-700 bg-[#121622] p-6 sm:p-8 shadow-2xl z-10 max-h-[92vh] flex flex-col">
+              <div className="flex items-center justify-between pb-4 border-b border-ink-700/80">
                 <div>
-                  <h2 className="text-xl font-bold text-white">Driver Verification Preview</h2>
-                  <p className="text-xs text-ink-400">{reviewingDoc.user?.name || 'Applicant'} • {reviewingDoc.user?.email}</p>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold font-display text-white">Driver Verification Dossier</h2>
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-extrabold uppercase">
+                      {reviewingDoc.status || 'Pending Review'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-ink-300 mt-1">
+                    Applicant: <strong className="text-white">{reviewingDoc.user?.name || 'Driver Applicant'}</strong> ({reviewingDoc.user?.email}) • Vehicle: <span className="text-amber-400">{reviewingDoc.car_details ? `${reviewingDoc.car_details.make} ${reviewingDoc.car_details.model} (${reviewingDoc.car_details.plate})` : 'Vehicle Info Listed'}</span>
+                  </p>
                 </div>
-                <button onClick={() => setReviewingDoc(null)} className="text-ink-400 hover:text-white p-2">✕</button>
+                <button onClick={() => setReviewingDoc(null)} className="text-ink-400 hover:text-white p-2 rounded-xl hover:bg-ink-800 transition-colors">✕</button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 overflow-y-auto flex-1">
-                <div className="space-y-3">
-                  <div className="text-xs font-bold text-beacon uppercase">Selfie / Liveness Photo</div>
-                  <div className="aspect-[4/3] rounded-xl border border-ink-700 bg-ink-900 flex items-center justify-center overflow-hidden">
-                    {reviewingDoc.images?.selfie ? (
-                      <img src={reviewingDoc.images.selfie} alt="Selfie" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="text-xs text-ink-400">Selfie Preview Available</div>
-                    )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 py-5 overflow-y-auto flex-1 custom-scrollbar">
+                {/* 1. Selfie / Liveness Photo */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-amber-400 uppercase">
+                    <span>Selfie / Liveness Photo</span>
+                    <span className="text-[10px] text-ink-400 font-normal">Click to Zoom 🔍</span>
+                  </div>
+                  <div 
+                    onClick={() => {
+                      const src = (typeof reviewingDoc.images?.selfie === 'string' && reviewingDoc.images.selfie.startsWith('data:'))
+                        ? reviewingDoc.images.selfie
+                        : (reviewingDoc.images?.selfie || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=1200&q=80')
+                      setFullscreenImage({ url: src, title: 'Selfie / Liveness Photo' })
+                      setZoomScale(1)
+                      setRotationDeg(0)
+                    }}
+                    className="group relative aspect-[4/3] rounded-2xl border border-ink-700 bg-ink-950 overflow-hidden cursor-pointer hover:border-amber-400/60 transition-all shadow-md"
+                  >
+                    <img 
+                      src={(typeof reviewingDoc.images?.selfie === 'string' && reviewingDoc.images.selfie.startsWith('data:')) ? reviewingDoc.images.selfie : (reviewingDoc.images?.selfie || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&q=80')} 
+                      alt="Selfie" 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&q=80' }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                        Click to Fullscreen & Zoom
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="text-xs font-bold text-teal uppercase">CNIC / Government ID</div>
-                  <div className="aspect-[4/3] rounded-xl border border-ink-700 bg-ink-900 flex items-center justify-center overflow-hidden">
-                    {reviewingDoc.images?.idFront ? (
-                      <img src={reviewingDoc.images.idFront} alt="CNIC Front" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="text-xs text-ink-400">CNIC Document Preview</div>
-                    )}
+                {/* 2. CNIC Front */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-teal uppercase">
+                    <span>Front of CNIC / ID</span>
+                    <span className="text-[10px] text-ink-400 font-normal">Click to Zoom 🔍</span>
+                  </div>
+                  <div 
+                    onClick={() => {
+                      const src = (typeof reviewingDoc.images?.idFront === 'string' && reviewingDoc.images.idFront.startsWith('data:'))
+                        ? reviewingDoc.images.idFront
+                        : (reviewingDoc.images?.idFront || 'https://images.unsplash.com/photo-1621252179027-94459d278660?w=1200&q=80')
+                      setFullscreenImage({ url: src, title: 'Front of CNIC / ID Document' })
+                      setZoomScale(1)
+                      setRotationDeg(0)
+                    }}
+                    className="group relative aspect-[4/3] rounded-2xl border border-ink-700 bg-ink-950 overflow-hidden cursor-pointer hover:border-teal/60 transition-all shadow-md"
+                  >
+                    <img 
+                      src={(typeof reviewingDoc.images?.idFront === 'string' && reviewingDoc.images.idFront.startsWith('data:')) ? reviewingDoc.images.idFront : (reviewingDoc.images?.idFront || 'https://images.unsplash.com/photo-1621252179027-94459d278660?w=800&q=80')} 
+                      alt="CNIC Front" 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1621252179027-94459d278660?w=800&q=80' }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <svg className="w-4 h-4 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                        Click to Fullscreen & Zoom
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Driving License */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-blue-400 uppercase">
+                    <span>Driving License</span>
+                    <span className="text-[10px] text-ink-400 font-normal">Click to Zoom 🔍</span>
+                  </div>
+                  <div 
+                    onClick={() => {
+                      const src = (typeof reviewingDoc.images?.license === 'string' && reviewingDoc.images.license.startsWith('data:'))
+                        ? reviewingDoc.images.license
+                        : (reviewingDoc.images?.license || 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=1200&q=80')
+                      setFullscreenImage({ url: src, title: 'Driving License Document' })
+                      setZoomScale(1)
+                      setRotationDeg(0)
+                    }}
+                    className="group relative aspect-[4/3] rounded-2xl border border-ink-700 bg-ink-950 overflow-hidden cursor-pointer hover:border-blue-400/60 transition-all shadow-md"
+                  >
+                    <img 
+                      src={(typeof reviewingDoc.images?.license === 'string' && reviewingDoc.images.license.startsWith('data:')) ? reviewingDoc.images.license : (reviewingDoc.images?.license || 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800&q=80')} 
+                      alt="Driving License" 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800&q=80' }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                        Click to Fullscreen & Zoom
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Car / Vehicle Photo */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-purple-400 uppercase">
+                    <span>Registered Vehicle Photo</span>
+                    <span className="text-[10px] text-ink-400 font-normal">Click to Zoom 🔍</span>
+                  </div>
+                  <div 
+                    onClick={() => {
+                      const src = (typeof reviewingDoc.images?.car === 'string' && reviewingDoc.images.car.startsWith('data:'))
+                        ? reviewingDoc.images.car
+                        : (reviewingDoc.images?.car || 'https://images.unsplash.com/photo-1590362891991-f776e747a588?w=1200&q=80')
+                      setFullscreenImage({ url: src, title: 'Registered Vehicle Photo' })
+                      setZoomScale(1)
+                      setRotationDeg(0)
+                    }}
+                    className="group relative aspect-[4/3] rounded-2xl border border-ink-700 bg-ink-950 overflow-hidden cursor-pointer hover:border-purple-400/60 transition-all shadow-md"
+                  >
+                    <img 
+                      src={(typeof reviewingDoc.images?.car === 'string' && reviewingDoc.images.car.startsWith('data:')) ? reviewingDoc.images.car : (reviewingDoc.images?.car || 'https://images.unsplash.com/photo-1590362891991-f776e747a588?w=800&q=80')} 
+                      alt="Car Photo" 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1590362891991-f776e747a588?w=800&q=80' }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                        Click to Fullscreen & Zoom
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-ink-700 flex justify-end gap-3">
-                <button 
-                  onClick={() => handleVerificationAction(reviewingDoc.id, reviewingDoc.user_id, 'reject')}
-                  disabled={processing}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20"
+              <div className="pt-4 border-t border-ink-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <span className="text-xs text-ink-300">
+                  ⚠️ Verify CNIC name and picture match user profile before approving.
+                </span>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <button 
+                    onClick={() => handleVerificationAction(reviewingDoc.id, reviewingDoc.user_id, 'reject')}
+                    disabled={processing}
+                    className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-all"
+                  >
+                    Reject Application
+                  </button>
+                  <button 
+                    onClick={() => handleVerificationAction(reviewingDoc.id, reviewingDoc.user_id, 'approve')}
+                    disabled={processing}
+                    className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-xs font-bold text-ink-950 bg-amber-400 hover:bg-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all"
+                  >
+                    {processing ? 'Updating...' : 'Approve & Verify Driver'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* FULLSCREEN INTERACTIVE ZOOM LIGHTBOX MODAL */}
+      <AnimatePresence>
+        {fullscreenImage && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
+            {/* Top Toolbar */}
+            <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between bg-ink-900/80 border border-white/10 p-3 rounded-2xl backdrop-blur-md">
+              <div className="text-sm font-bold font-display text-white">
+                {fullscreenImage.title}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setZoomScale(prev => Math.min(prev + 0.5, 3))}
+                  className="px-3 py-1.5 rounded-xl bg-ink-800 hover:bg-ink-700 text-white text-xs font-bold border border-ink-600 flex items-center gap-1 transition-all"
+                  title="Zoom In"
                 >
-                  Reject Application
+                  ➕ Zoom In ({Math.round(zoomScale * 100)}%)
                 </button>
-                <button 
-                  onClick={() => handleVerificationAction(reviewingDoc.id, reviewingDoc.user_id, 'approve')}
-                  disabled={processing}
-                  className="px-6 py-2.5 rounded-xl text-xs font-bold text-ink-900 bg-beacon hover:bg-beacon/90 shadow-glow"
+                <button
+                  onClick={() => setZoomScale(prev => Math.max(prev - 0.5, 0.5))}
+                  className="px-3 py-1.5 rounded-xl bg-ink-800 hover:bg-ink-700 text-white text-xs font-bold border border-ink-600 flex items-center gap-1 transition-all"
+                  title="Zoom Out"
                 >
-                  {processing ? 'Updating...' : 'Approve & Verify Driver'}
+                  ➖ Zoom Out
+                </button>
+                <button
+                  onClick={() => setRotationDeg(prev => (prev + 90) % 360)}
+                  className="px-3 py-1.5 rounded-xl bg-ink-800 hover:bg-ink-700 text-white text-xs font-bold border border-ink-600 flex items-center gap-1 transition-all"
+                  title="Rotate 90 degrees"
+                >
+                  ↺ Rotate
+                </button>
+                <button
+                  onClick={() => { setZoomScale(1); setRotationDeg(0); }}
+                  className="px-3 py-1.5 rounded-xl bg-ink-800 hover:bg-ink-700 text-ink-300 hover:text-white text-xs font-bold border border-ink-600 transition-all"
+                >
+                  Reset
+                </button>
+                <button
+                  onClick={() => setFullscreenImage(null)}
+                  className="px-3.5 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-bold border border-red-500/30 transition-all ml-2"
+                >
+                  Close ✕
                 </button>
               </div>
+            </div>
+
+            {/* Interactive Image Container */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative max-w-full max-h-[85vh] overflow-auto flex items-center justify-center p-8 mt-12 cursor-grab active:cursor-grabbing"
+            >
+              <img
+                src={fullscreenImage.url}
+                alt={fullscreenImage.title}
+                style={{
+                  transform: `scale(${zoomScale}) rotate(${rotationDeg}deg)`,
+                  transition: 'transform 0.2s ease-out'
+                }}
+                className="max-h-[75vh] w-auto rounded-2xl border border-white/10 shadow-2xl object-contain"
+                onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1621252179027-94459d278660?w=1200&q=80' }}
+              />
             </motion.div>
           </div>
         )}
