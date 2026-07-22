@@ -53,64 +53,127 @@ export default function ProtectedRoute({ children, requireOnboarding = true }) {
           </div>
         </header>
 
-        {/* MAIN PORTAL BODY SKELETON */}
-        <main className="flex-1 p-5 sm:p-8 md:p-10 overflow-y-auto max-w-7xl mx-auto w-full space-y-8">
+        {/* MAIN PORTAL BODY SKELETON MATCHED TO DESTINATION PAGE */}
+        <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full space-y-6">
           {/* Header Bar Skeleton */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
             <div className="space-y-2">
-              <div className="h-8 w-48 sm:w-64 bg-ink-700/70 rounded-xl animate-pulse" />
-              <div className="h-4 w-36 sm:w-48 bg-ink-800/80 rounded-md animate-pulse" />
+              <div className="h-7 w-48 sm:w-64 bg-ink-700/70 rounded-xl animate-pulse" />
+              <div className="h-3.5 w-36 sm:w-48 bg-ink-800/80 rounded-md animate-pulse" />
             </div>
-            <div className="hidden sm:flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-ink-800/80 animate-pulse" />
-              <div className="h-10 w-32 rounded-xl bg-amber-500/20 border border-amber-500/30 animate-pulse" />
-            </div>
-          </div>
-
-          {/* Quick Action Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="h-32 sm:h-36 rounded-2xl border border-ink-700/80 bg-ink-800/40 p-6 flex flex-col justify-between animate-pulse">
-              <div className="h-4 w-28 bg-amber-500/30 rounded-md" />
-              <div className="h-7 w-40 bg-ink-700 rounded-lg" />
-            </div>
-            <div className="h-32 sm:h-36 rounded-2xl border border-ink-700/80 bg-ink-800/40 p-6 flex flex-col justify-between animate-pulse">
-              <div className="h-4 w-28 bg-teal/30 rounded-md" />
-              <div className="h-7 w-40 bg-ink-700 rounded-lg" />
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-ink-800/80 animate-pulse" />
+              <div className="h-9 w-9 rounded-full bg-amber-500/20 border border-amber-500/30 animate-pulse" />
             </div>
           </div>
 
-          {/* Main Content Area Card */}
-          <div className="rounded-3xl border border-ink-700/80 bg-[#121622] p-6 sm:p-8 space-y-6 shadow-sm">
-            <div className="flex items-center justify-between border-b border-ink-700/60 pb-4">
-              <div className="h-6 w-44 bg-ink-700/70 rounded-lg animate-pulse" />
-              <div className="h-5 w-20 bg-ink-800/80 rounded-md animate-pulse" />
+          {/* PAGE STRUCTURE MATCHING */}
+          {location.pathname === '/chat' ? (
+            /* CHAT PAGE SKELETON STRUCTURE */
+            <div className="h-[70vh] rounded-3xl border border-ink-700/80 bg-[#121622] flex overflow-hidden">
+              <div className="w-full md:w-80 border-r border-ink-700/60 p-4 space-y-3 shrink-0">
+                <div className="h-8 w-full bg-ink-800 rounded-xl animate-pulse" />
+                <div className="h-16 w-full bg-ink-800/60 rounded-xl animate-pulse" />
+                <div className="h-16 w-full bg-ink-800/60 rounded-xl animate-pulse" />
+                <div className="h-16 w-full bg-ink-800/60 rounded-xl animate-pulse" />
+              </div>
+              <div className="hidden md:flex flex-1 flex-col justify-between p-4 bg-ink-950/40">
+                <div className="h-12 w-full bg-ink-800/50 rounded-xl animate-pulse" />
+                <div className="space-y-3 my-auto">
+                  <div className="h-10 w-48 bg-amber-500/20 rounded-2xl animate-pulse ml-auto" />
+                  <div className="h-10 w-56 bg-ink-800/60 rounded-2xl animate-pulse" />
+                </div>
+                <div className="h-12 w-full bg-ink-800/80 rounded-2xl animate-pulse" />
+              </div>
             </div>
-            <div className="space-y-4">
-              <div className="h-20 w-full rounded-2xl bg-ink-800/50 animate-pulse" />
-              <div className="h-20 w-full rounded-2xl bg-ink-800/50 animate-pulse" />
-              <div className="h-20 w-full rounded-2xl bg-ink-800/50 animate-pulse" />
+          ) : location.pathname === '/find-ride' ? (
+            /* FIND RIDE PAGE SKELETON STRUCTURE */
+            <div className="space-y-6">
+              <div className="h-16 w-full rounded-2xl border border-ink-700/80 bg-[#121622] p-3 flex items-center gap-3 animate-pulse">
+                <div className="h-9 flex-1 bg-ink-800/60 rounded-xl" />
+                <div className="h-9 flex-1 bg-ink-800/60 rounded-xl" />
+              </div>
+              <div className="flex gap-2">
+                <div className="h-8 w-24 rounded-full bg-amber-500/20 border border-amber-500/30 animate-pulse" />
+                <div className="h-8 w-24 rounded-full bg-ink-800/60 animate-pulse" />
+                <div className="h-8 w-24 rounded-full bg-ink-800/60 animate-pulse" />
+              </div>
+              <div className="space-y-3">
+                <div className="h-28 w-full rounded-2xl border border-ink-700/80 bg-[#121622] p-5 flex justify-between animate-pulse">
+                  <div className="space-y-2">
+                    <div className="h-5 w-48 bg-ink-700 rounded" />
+                    <div className="h-4 w-32 bg-ink-800 rounded" />
+                  </div>
+                  <div className="h-8 w-20 bg-amber-500/20 rounded-xl" />
+                </div>
+                <div className="h-28 w-full rounded-2xl border border-ink-700/80 bg-[#121622] p-5 flex justify-between animate-pulse">
+                  <div className="space-y-2">
+                    <div className="h-5 w-48 bg-ink-700 rounded" />
+                    <div className="h-4 w-32 bg-ink-800 rounded" />
+                  </div>
+                  <div className="h-8 w-20 bg-amber-500/20 rounded-xl" />
+                </div>
+              </div>
             </div>
-          </div>
+          ) : location.pathname === '/profile' ? (
+            /* PROFILE PAGE SKELETON STRUCTURE */
+            <div className="max-w-2xl mx-auto rounded-3xl border border-ink-700/80 bg-[#121622] p-6 sm:p-8 space-y-6">
+              <div className="flex items-center gap-4 border-b border-ink-700/60 pb-6">
+                <div className="w-20 h-20 rounded-full bg-ink-700 animate-pulse shrink-0" />
+                <div className="space-y-2">
+                  <div className="h-6 w-40 bg-ink-700 rounded-lg animate-pulse" />
+                  <div className="h-4 w-28 bg-ink-800 rounded-md animate-pulse" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="h-12 w-full bg-ink-800/60 rounded-xl animate-pulse" />
+                <div className="h-12 w-full bg-ink-800/60 rounded-xl animate-pulse" />
+                <div className="h-12 w-full bg-ink-800/60 rounded-xl animate-pulse" />
+                <div className="h-12 w-full bg-ink-800/60 rounded-xl animate-pulse" />
+              </div>
+            </div>
+          ) : location.pathname === '/admin' ? (
+            /* ADMIN DASHBOARD SKELETON STRUCTURE */
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="h-24 rounded-2xl border border-ink-700/80 bg-ink-800/40 p-4 space-y-2 animate-pulse" />
+                <div className="h-24 rounded-2xl border border-ink-700/80 bg-ink-800/40 p-4 space-y-2 animate-pulse" />
+                <div className="h-24 rounded-2xl border border-ink-700/80 bg-ink-800/40 p-4 space-y-2 animate-pulse" />
+                <div className="h-24 rounded-2xl border border-ink-700/80 bg-ink-800/40 p-4 space-y-2 animate-pulse" />
+              </div>
+              <div className="rounded-3xl border border-ink-700/80 bg-[#121622] p-6 space-y-4">
+                <div className="h-6 w-48 bg-ink-700 rounded-md animate-pulse" />
+                <div className="h-12 w-full bg-ink-800/60 rounded-xl animate-pulse" />
+                <div className="h-12 w-full bg-ink-800/60 rounded-xl animate-pulse" />
+                <div className="h-12 w-full bg-ink-800/60 rounded-xl animate-pulse" />
+              </div>
+            </div>
+          ) : (
+            /* DEFAULT DASHBOARD PAGE SKELETON STRUCTURE */
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="h-32 sm:h-36 rounded-2xl border border-ink-700/80 bg-ink-800/40 p-6 flex flex-col justify-between animate-pulse">
+                  <div className="h-4 w-28 bg-amber-500/30 rounded-md" />
+                  <div className="h-7 w-40 bg-ink-700 rounded-lg" />
+                </div>
+                <div className="h-32 sm:h-36 rounded-2xl border border-ink-700/80 bg-ink-800/40 p-6 flex flex-col justify-between animate-pulse">
+                  <div className="h-4 w-28 bg-teal/30 rounded-md" />
+                  <div className="h-7 w-40 bg-ink-700 rounded-lg" />
+                </div>
+              </div>
 
-          {/* 4 Bottom Stats Grid Skeleton */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="h-24 rounded-2xl border border-ink-700/80 bg-ink-800/30 p-4 space-y-2 animate-pulse">
-              <div className="h-3 w-16 bg-ink-700 rounded" />
-              <div className="h-6 w-12 bg-white/20 rounded" />
+              <div className="rounded-3xl border border-ink-700/80 bg-[#121622] p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-ink-700/60 pb-3">
+                  <div className="h-5 w-44 bg-ink-700/70 rounded-lg animate-pulse" />
+                  <div className="h-4 w-20 bg-ink-800/80 rounded-md animate-pulse" />
+                </div>
+                <div className="space-y-3">
+                  <div className="h-20 w-full rounded-2xl bg-ink-800/50 animate-pulse" />
+                  <div className="h-20 w-full rounded-2xl bg-ink-800/50 animate-pulse" />
+                </div>
+              </div>
             </div>
-            <div className="h-24 rounded-2xl border border-ink-700/80 bg-ink-800/30 p-4 space-y-2 animate-pulse">
-              <div className="h-3 w-16 bg-ink-700 rounded" />
-              <div className="h-6 w-12 bg-white/20 rounded" />
-            </div>
-            <div className="h-24 rounded-2xl border border-ink-700/80 bg-ink-800/30 p-4 space-y-2 animate-pulse">
-              <div className="h-3 w-16 bg-ink-700 rounded" />
-              <div className="h-6 w-12 bg-white/20 rounded" />
-            </div>
-            <div className="h-24 rounded-2xl border border-ink-700/80 bg-ink-800/30 p-4 space-y-2 animate-pulse">
-              <div className="h-3 w-16 bg-ink-700 rounded" />
-              <div className="h-6 w-12 bg-white/20 rounded" />
-            </div>
-          </div>
+          )}
         </main>
       </div>
     )

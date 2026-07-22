@@ -28,7 +28,7 @@ export default function Sidebar({ isOpen, onClose }) {
       <div className={`backdrop ${isOpen ? 'show' : ''}`} onClick={onClose}></div>
       <aside className={`sidebar ${isOpen ? 'open' : ''}`} id="sidebar">
         <div className="brand-logo">
-          <img src="/Wayfare_logo.jpeg" alt="Wayfare" />
+          <img src="/Wayfare_favicon.jpeg" alt="Wayfare" className="w-12 h-12 rounded-xl object-cover shadow-md" />
         </div>
 
         <div className="nav-scroll custom-scrollbar">

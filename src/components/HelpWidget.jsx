@@ -258,7 +258,7 @@ export default function HelpWidget() {
         )}
       </AnimatePresence>
 
-      {/* DRAGGABLE FLOATING TRIGGER BUTTON */}
+      {/* DRAGGABLE FLOATING TRIGGER BUTTON (Hidden on mobile when chat drawer is open, visible on desktop) */}
       {!isDismissed && (
         <motion.div
           drag
@@ -266,7 +266,9 @@ export default function HelpWidget() {
           onDragStart={() => setIsDragging(true)}
           onDrag={handleDrag}
           onDragEnd={handleDragEnd}
-          className="fixed bottom-24 right-5 sm:bottom-6 sm:right-6 z-[95] touch-none cursor-grab active:cursor-grabbing"
+          className={`fixed bottom-24 right-5 sm:bottom-6 sm:right-6 z-[95] touch-none cursor-grab active:cursor-grabbing ${
+            isOpen ? 'hidden sm:block' : 'block'
+          }`}
         >
           <button
             onClick={() => {
