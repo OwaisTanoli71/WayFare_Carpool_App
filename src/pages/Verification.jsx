@@ -5,15 +5,15 @@ import { useApp } from '../context/AppContext'
 import { supabase } from '../lib/supabase'
 import Button from '../components/Button'
 
-function FileDropzone({ label, onUpload }) {
+function FileDropzone({ label, id, onUpload }) {
   const [filePreview, setFilePreview] = useState(null)
   const [fileName, setFileName] = useState('')
   const fileInputRef = useRef(null)
+  const inputId = id || `file-input-${Math.random().toString(36).substring(2, 9)}`
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Create local object URL for instant preview
       const previewUrl = URL.createObjectURL(file)
       setFilePreview(previewUrl)
       setFileName(file.name)
@@ -22,6 +22,7 @@ function FileDropzone({ label, onUpload }) {
   }
 
   const handleRemove = (e) => {
+    e.preventDefault()
     e.stopPropagation()
     setFilePreview(null)
     setFileName('')
@@ -31,19 +32,20 @@ function FileDropzone({ label, onUpload }) {
 
   return (
     <div className="mt-4">
-      <label className="mb-2 block text-sm font-medium text-ink-50">{label}</label>
+      <span className="mb-2 block text-sm font-medium text-ink-50">{label}</span>
       <input
         type="file"
+        id={inputId}
         ref={fileInputRef}
         accept="image/*"
         className="hidden"
         onChange={handleFileChange}
       />
-      <div
+      <label
+        htmlFor={inputId}
         className={`relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 transition-all overflow-hidden ${
           filePreview ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-ink-600 bg-ink-800/50 hover:border-amber-400/50'
         }`}
-        onClick={() => fileInputRef.current?.click()}
       >
         {filePreview ? (
           <div className="flex flex-col items-center w-full">
@@ -52,7 +54,7 @@ function FileDropzone({ label, onUpload }) {
               <button
                 type="button"
                 onClick={handleRemove}
-                className="absolute top-2 right-2 p-1.5 rounded-full bg-ink-900/80 hover:bg-red-500 text-white transition-colors shadow-md"
+                className="absolute top-2 right-2 p-1.5 rounded-full bg-ink-900/80 hover:bg-red-500 text-white transition-colors shadow-md z-10"
                 title="Remove photo"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -75,7 +77,7 @@ function FileDropzone({ label, onUpload }) {
             </span>
           </>
         )}
-      </div>
+      </label>
     </div>
   )
 }
