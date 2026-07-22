@@ -364,32 +364,29 @@ export default function Landing() {
 
       {/* Feature Cards Section */}
       <section id="safety" className="px-6 py-32 relative">
-        <div className="mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <h2 className="font-display text-3xl sm:text-5xl font-semibold mb-4">Safety isn't a feature.<br/><span className="text-ink-400">It's the foundation.</span></h2>
+          <div className="mx-auto max-w-5xl">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 justify-center items-stretch">
+              {[
+                { t: 'ID & Selfie Verified', d: 'Every driver and rider passes a government ID and liveness check before their first ride. No anonymous accounts, ever.', icon: '🛡️' },
+                { t: 'Gender-Matched', d: 'Set a preference for who you ride with — respected on every match, never forced. Total control over your comfort.', icon: '👥' },
+                { t: 'Live Trip Sharing', d: 'Share your exact route and real-time location with someone you trust with one tap, for the duration of the whole ride.', icon: '📍' }
+              ].map((f, i) => (
+                <motion.div
+                  key={f.t}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ delay: i * 0.15, duration: 0.6 }}
+                  className="group relative overflow-hidden rounded-[2rem] border border-ink-700 bg-ink-800/30 p-8 hover:-translate-y-2 transition-all duration-300 hover:border-beacon/50 hover:bg-ink-800/60 hover:shadow-2xl flex flex-col items-center justify-center text-center"
+                >
+                  <div className="text-4xl mb-5 group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">{f.icon}</div>
+                  <h3 className="font-display text-xl font-semibold text-white mb-3 text-center">{f.t}</h3>
+                  <p className="text-ink-100 leading-relaxed text-center text-sm">{f.d}</p>
+                  <div className="absolute inset-0 -z-10 bg-gradient-to-br from-beacon/0 to-beacon/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                </motion.div>
+              ))}
+            </div>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { t: 'ID & Selfie Verified', d: 'Every driver and rider passes a government ID and liveness check before their first ride. No anonymous accounts, ever.', icon: '🛡️' },
-              { t: 'Gender-Matched', d: 'Set a preference for who you ride with — respected on every match, never forced. Total control over your comfort.', icon: '👥' },
-              { t: 'Live Trip Sharing', d: 'Share your exact route and real-time location with someone you trust with one tap, for the duration of the whole ride.', icon: '📍' }
-            ].map((f, i) => (
-              <motion.div
-                key={f.t}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ delay: i * 0.15, duration: 0.6 }}
-                className="group relative overflow-hidden rounded-[2rem] border border-ink-700 bg-ink-800/30 p-8 hover:-translate-y-2 transition-all duration-300 hover:border-beacon/50 hover:bg-ink-800/60 hover:shadow-2xl"
-              >
-                <div className="text-4xl mb-6 group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">{f.icon}</div>
-                <h3 className="font-display text-xl font-semibold text-white mb-3">{f.t}</h3>
-                <p className="text-ink-100 leading-relaxed">{f.d}</p>
-                <div className="absolute inset-0 -z-10 bg-gradient-to-br from-beacon/0 to-beacon/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              </motion.div>
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* How it Works */}

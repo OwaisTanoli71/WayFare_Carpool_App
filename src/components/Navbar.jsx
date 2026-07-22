@@ -25,9 +25,9 @@ export default function Navbar() {
         scrolled ? 'bg-ink-900/80 backdrop-blur-lg border-b border-ink-700/80 shadow-lg' : 'bg-transparent border-transparent py-2'
       }`}
     >
-      <div className="grid w-full grid-cols-3 items-center px-6 py-4 lg:px-12">
+      <div className="flex w-full items-center justify-between px-4 sm:px-6 py-4 lg:px-12">
         {/* Left: Logo */}
-        <div className="flex justify-start">
+        <div className="flex justify-start items-center">
           <Link to="/" className="group flex items-center gap-3">
             <img src="/Wayfare_favicon.jpeg" alt="Wayfare Logo" className="h-8 w-8 object-cover rounded-lg transition-transform duration-300 group-hover:rotate-6" />
             <span className="font-display text-xl font-bold tracking-tight text-white">Wayfare</span>
