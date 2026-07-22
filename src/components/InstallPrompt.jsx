@@ -58,7 +58,7 @@ export default function InstallPrompt() {
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 50 }}
-        className="fixed bottom-6 left-4 right-4 z-50 mx-auto max-w-sm rounded-2xl border border-ink-700 bg-ink-800 p-4 shadow-2xl"
+        className="fixed bottom-24 sm:bottom-6 left-4 right-4 z-[95] mx-auto max-w-sm rounded-2xl border border-amber-500/30 bg-[#141824]/95 p-4 shadow-[0_10px_40px_rgba(0,0,0,0.6)] backdrop-blur-xl"
       >
         <div className="flex items-start gap-4">
           <img src="/Wayfare_favicon.jpeg" alt="Wayfare" className="h-12 w-12 rounded-xl object-cover shadow-sm" />

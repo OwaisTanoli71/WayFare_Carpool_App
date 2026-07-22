@@ -26,10 +26,12 @@ import HelpWidget from './components/HelpWidget'
 import DashboardLayout from './components/DashboardLayout'
 import InactivityTracker from './components/InactivityTracker'
 import PwaUpdatePrompt from './components/PwaUpdatePrompt'
+import SplashScreen from './components/SplashScreen'
 
 export default function App() {
   return (
     <AppProvider>
+      <SplashScreen />
       <InactivityTracker />
       <OfflineIndicator />
       <InstallPrompt />

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, MessageSquare, Compass, ShieldCheck, PlusCircle, Calculator } from 'lucide-react'
+import { Sparkles, MessageSquare, Compass, ShieldCheck, PlusCircle, Calculator, X, Trash2 } from 'lucide-react'
 
 const AI_TILES = [
   {
@@ -42,6 +42,10 @@ export default function HelpWidget() {
   const [messages, setMessages] = useState([])
   const [inputQuery, setInputQuery] = useState('')
   const [isThinking, setIsThinking] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [overDismissZone, setOverDismissZone] = useState(false)
+  const [isDismissed, setIsDismissed] = useState(false)
+
   const chatEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -82,11 +86,37 @@ export default function HelpWidget() {
     }, 600)
   }
 
+  const handleDrag = (event, info) => {
+    const pointY = info.point.y
+    const pointX = info.point.x
+    const screenHeight = window.innerHeight
+    const screenWidth = window.innerWidth
+
+    // Check if dragging near bottom center dismiss zone
+    const isNearBottom = pointY > screenHeight - 140
+    const isNearCenterX = Math.abs(pointX - screenWidth / 2) < 130
+
+    if (isNearBottom && isNearCenterX) {
+      setOverDismissZone(true)
+    } else {
+      setOverDismissZone(false)
+    }
+  }
+
+  const handleDragEnd = (event, info) => {
+    setIsDragging(false)
+    if (overDismissZone) {
+      setIsDismissed(true)
+      setIsOpen(false)
+    }
+    setOverDismissZone(false)
+  }
+
   return (
     <>
       {/* CHATBOT MODAL POPUP */}
       <AnimatePresence>
-        {isOpen && (
+        {isOpen && !isDismissed && (
           <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm sm:bg-transparent sm:backdrop-blur-none pointer-events-auto">
             {/* Backdrop click to close on mobile */}
             <div className="absolute inset-0 sm:hidden" onClick={() => setIsOpen(false)} />
@@ -98,84 +128,82 @@ export default function HelpWidget() {
               className="relative w-full max-w-[400px] h-[80vh] max-h-[580px] bg-[#121722] border border-[#232B3B] rounded-3xl shadow-2xl flex flex-col overflow-hidden z-10 sm:fixed sm:bottom-24 sm:right-6"
             >
               {/* Top Header Bar */}
-              <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#232B3B] bg-[#0F1420] shrink-0">
-                <div className="flex items-center gap-2.5 font-display text-sm font-bold text-white tracking-tight">
-                  <img 
-                    src="/Wayfare_favicon.jpeg" 
-                    alt="Wayfare Logo" 
-                    className="w-7 h-7 rounded-lg object-cover border border-amber-500/30"
-                  />
-                  <span>Wayfare<span className="text-amber-400">.ai</span></span>
+              <div className="p-4 border-b border-[#232B3B] bg-[#161C28] flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold shadow-md">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-sm text-white flex items-center gap-1.5">
+                      Wayfare AI Assistant
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">v2.4</span>
+                    </h3>
+                    <p className="text-[11px] text-ink-400">Ask about rides, fares & safety verification</p>
+                  </div>
                 </div>
-                
-                <div className="flex items-center gap-2">
-                  {messages.length > 0 && (
-                    <button 
-                      onClick={() => setMessages([])}
-                      className="px-2.5 py-1 rounded-lg bg-[#1C2333] border border-[#2D374D] text-ink-300 hover:text-white text-[11px] font-medium transition-colors"
-                    >
-                      New Chat
-                    </button>
-                  )}
-                  <button 
-                    onClick={() => setIsOpen(false)} 
-                    className="w-8 h-8 rounded-full bg-ink-800/80 text-ink-300 hover:text-white flex items-center justify-center text-sm transition-colors"
-                  >
-                    ✕
-                  </button>
-                </div>
+
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="p-2 rounded-xl text-ink-400 hover:text-white hover:bg-ink-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* Chat Body Container */}
-              <div className="flex-1 bg-[#121722] flex flex-col overflow-y-auto custom-scrollbar p-4">
+              {/* Chat Body */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-[#0F1420]">
                 {messages.length === 0 ? (
-                  /* Hero Screen with 4 Prompt Tiles */
-                  <div className="flex flex-col items-center text-center my-auto py-2 gap-4">
-                    <img 
-                      src="/Wayfare_favicon.jpeg" 
-                      alt="Wayfare Logo" 
-                      className="w-14 h-14 rounded-2xl object-cover border border-white/10 shadow-lg"
-                    />
+                  <div className="space-y-4">
+                    <div className="p-3.5 rounded-2xl bg-[#161C28] border border-[#2A354B] text-xs text-ink-200 leading-relaxed space-y-1">
+                      <div className="font-bold text-amber-400 flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4" /> Welcome to Wayfare Support!
+                      </div>
+                      <p className="text-ink-300">Select a prompt below or type your custom query to get instant AI assistance.</p>
+                    </div>
 
-                    <p className="text-xs text-ink-300 max-w-[260px] leading-relaxed">
-                      Your intelligent carpool assistant for fares, ride matching, and safety checks.
-                    </p>
-
-                    {/* 4 Quick Prompt Cards Grid */}
-                    <div className="grid grid-cols-2 gap-2.5 w-full max-w-[340px] mt-2">
-                      {AI_TILES.map((tile) => (
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {AI_TILES.map(tile => (
                         <button
                           key={tile.id}
                           onClick={() => handleSendMessage(tile.prompt)}
-                          className={`p-3 rounded-2xl border ${tile.bgColor} transition-all flex flex-col items-center justify-center text-center gap-1.5 h-[90px] hover:scale-[1.02] shadow-sm relative group`}
+                          className={`p-3 rounded-2xl border text-left transition-all flex items-center gap-3 ${tile.bgColor} group`}
                         >
-                          <div className="p-1.5 rounded-xl bg-ink-900/60 flex items-center justify-center">
+                          <div className="p-2.5 rounded-xl bg-ink-900/80 shrink-0 shadow-sm">
                             {tile.icon}
                           </div>
-                          <div className="w-full">
-                            <div className="font-display font-bold text-[11px] text-white truncate px-1 tracking-tight">{tile.title}</div>
-                            <div className="font-body text-[9.5px] text-ink-400 truncate px-1 mt-0.5">{tile.desc}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-white group-hover:text-amber-400 transition-colors truncate">
+                              {tile.title}
+                            </div>
+                            <div className="text-[11px] text-ink-400 truncate">{tile.desc}</div>
                           </div>
                         </button>
                       ))}
                     </div>
                   </div>
                 ) : (
-                  /* Messages Stream */
-                  <div className="flex flex-col gap-3">
-                    {messages.map((m) => (
-                      <div key={m.id} className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed shadow-sm ${
-                        m.sender === 'user' 
-                          ? 'self-end bg-gradient-to-br from-amber-400 to-amber-500 text-ink-950 font-semibold rounded-br-xs' 
-                          : 'self-start bg-[#1C2333] text-ink-100 border border-[#2A354B] rounded-bl-xs'
-                      }`}>
-                        {m.text ? m.text.replaceAll('**', '') : ''}
+                  <div className="space-y-3">
+                    {messages.map(m => (
+                      <div
+                        key={m.id}
+                        className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}
+                      >
+                        <div
+                          className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${
+                            m.sender === 'user'
+                              ? 'bg-amber-400 text-ink-950 font-semibold rounded-br-xs shadow-md'
+                              : 'bg-[#1A2130] text-ink-100 border border-[#2A354B] rounded-bl-xs'
+                          }`}
+                        >
+                          {m.text}
+                        </div>
                       </div>
                     ))}
 
                     {isThinking && (
-                      <div className="self-start px-3.5 py-2.5 rounded-2xl bg-[#1C2333] text-ink-300 text-xs flex items-center gap-2 border border-[#2A354B]">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" /> Wayfare AI is thinking...
+                      <div className="flex items-center gap-2 p-3 rounded-2xl bg-[#1A2130] border border-[#2A354B] w-fit text-xs text-ink-400">
+                        <Sparkles className="w-4 h-4 text-amber-400 animate-spin" />
+                        <span>Wayfare AI is thinking...</span>
                       </div>
                     )}
                     <div ref={chatEndRef} />
@@ -209,18 +237,54 @@ export default function HelpWidget() {
         )}
       </AnimatePresence>
 
-      {/* FLOATING TRIGGER BUTTON */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-[95] w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 text-ink-950 flex items-center justify-center shadow-glow hover:scale-105 active:scale-95 transition-all duration-200"
-        title="Wayfare AI Assistant"
-      >
-        {isOpen ? (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        ) : (
-          <MessageSquare className="w-6 h-6 fill-ink-950/20" strokeWidth={2.2} />
+      {/* DISMISS DROPZONE (REVEALS WHILE DRAGGING) */}
+      <AnimatePresence>
+        {isDragging && !isDismissed && (
+          <motion.div
+            initial={{ opacity: 0, y: 30, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, scale: overDismissZone ? 1.1 : 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.8 }}
+            className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[99] px-5 py-3 rounded-full border flex items-center gap-2 shadow-2xl transition-all ${
+              overDismissZone
+                ? 'bg-red-600 text-white border-red-400 scale-110 shadow-[0_0_25px_rgba(239,68,68,0.7)]'
+                : 'bg-[#181D29]/95 text-red-400 border-red-500/40 backdrop-blur-xl'
+            }`}
+          >
+            <Trash2 className="w-5 h-5 animate-bounce" />
+            <span className="text-xs font-extrabold tracking-wide">
+              {overDismissZone ? 'Release to Hide AI Widget' : 'Drop here to hide AI button'}
+            </span>
+          </motion.div>
         )}
-      </button>
+      </AnimatePresence>
+
+      {/* DRAGGABLE FLOATING TRIGGER BUTTON */}
+      {!isDismissed && (
+        <motion.div
+          drag
+          dragMomentum={false}
+          onDragStart={() => setIsDragging(true)}
+          onDrag={handleDrag}
+          onDragEnd={handleDragEnd}
+          className="fixed bottom-24 right-5 sm:bottom-6 sm:right-6 z-[95] touch-none cursor-grab active:cursor-grabbing"
+        >
+          <button
+            onClick={() => {
+              if (!isDragging) setIsOpen(!isOpen)
+            }}
+            className={`w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 text-ink-950 flex items-center justify-center shadow-[0_8px_30px_rgba(245,158,11,0.4)] hover:scale-105 active:scale-95 transition-all duration-200 ${
+              overDismissZone ? 'ring-4 ring-red-500 scale-110' : ''
+            }`}
+            title="Wayfare AI Assistant (Drag to move or drop at bottom to hide)"
+          >
+            {isOpen ? (
+              <X className="w-6 h-6 stroke-[2.5]" />
+            ) : (
+              <MessageSquare className="w-6 h-6 fill-ink-950/20 stroke-[2.2]" />
+            )}
+          </button>
+        </motion.div>
+      )}
     </>
   )
 }

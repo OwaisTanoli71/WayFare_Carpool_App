@@ -11,21 +11,35 @@ export default function Dashboard() {
   const { user } = useApp()
   const [upcomingRide, setUpcomingRide] = useState(null)
 
+  const [driverRides, setDriverRides] = useState([])
+
   useEffect(() => {
     async function fetchUpcoming() {
       if (!user) return
       
-      // If user is driver, fetch their posted ride
-      const { data, error } = await supabase
+      // 1. Fetch rides posted by this driver
+      const { data: postedRides } = await supabase
         .from('rides')
         .select(`*, driver:users(name, avatar, verified)`)
         .eq('driver_id', user.id)
-        .eq('status', 'open')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
       
-      if (data) setUpcomingRide(data)
+      if (postedRides && postedRides.length > 0) {
+        setDriverRides(postedRides)
+        setUpcomingRide(postedRides[0])
+      } else {
+        // 2. Fetch rides booked as passenger
+        const { data: userBookings } = await supabase
+          .from('bookings')
+          .select(`ride_id, rides:rides(*, driver:users(name, avatar, verified))`)
+          .eq('rider_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+        
+        if (userBookings && userBookings.length > 0) {
+          setUpcomingRide(userBookings[0].rides)
+        }
+      }
     }
     fetchUpcoming()
   }, [user])
@@ -82,31 +96,69 @@ export default function Dashboard() {
       <section className="panel" style={{ marginBottom: '32px' }}>
         <div className="panel-head">
           <span className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Calendar size={18} className="text-warning" /> Your upcoming ride
+            <Calendar size={18} className="text-warning" /> Your Rides & Trip Offers ({driverRides.length > 0 ? driverRides.length : (upcomingRide ? 1 : 0)})
           </span>
-          <button className="panel-link">View all</button>
+          <button onClick={() => navigate('/find-ride')} className="panel-link">View all</button>
         </div>
-        {upcomingRide ? (
+
+        {driverRides.length > 0 ? (
+          <div className="space-y-3">
+            {driverRides.map(r => (
+              <div 
+                key={r.id}
+                className="p-4 rounded-2xl bg-[#1B2025] border border-[#252B31] flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-amber-500/30 transition-all"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-white font-display">{r.from_location} &rarr; {r.to_location}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                      r.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
+                      r.status === 'cancelled' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
+                    }`}>
+                      {r.status || 'open'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-ink-400 flex items-center gap-3">
+                    <span>Fare: <strong className="text-amber-400">Rs {r.price}</strong></span>
+                    <span>•</span>
+                    <span>Seats: <strong>{r.seats} available</strong></span>
+                    <span>•</span>
+                    <span>Date: {new Date(r.date).toLocaleDateString()}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => navigate(`/ride/${r.id}`)}
+                    className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 text-xs font-bold transition-all"
+                  >
+                    🚗 Manage Trip
+                  </button>
+                  <button
+                    onClick={() => navigate('/chat')}
+                    className="px-3 py-1.5 rounded-xl bg-ink-800 hover:bg-ink-700 text-white border border-ink-700 text-xs font-bold transition-all"
+                  >
+                    💬 Chat
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : upcomingRide ? (
           <div 
             className="ride-card" 
             onClick={() => navigate(`/ride/${upcomingRide.id}`)} 
             style={{ cursor: 'pointer', transition: 'all 0.3s ease', borderRadius: '16px', border: '1px solid #252B31' }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#20262C'; e.currentTarget.style.borderColor = '#363F47'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#252B31'; }}
           >
             <div className="ride-route">
               <div className="route-line">{upcomingRide.from_location} &rarr; {upcomingRide.to_location}</div>
-              <div className="route-track2">
-                <div className="dash teal"></div><div className="dash teal"></div><div className="dash teal"></div><div className="dash teal"></div>
-                <div className="dash teal"></div><div className="dash dim"></div><div className="dash dim"></div><div className="dash dim"></div>
-              </div>
               <div className="route-meta">{new Date(upcomingRide.date).toLocaleDateString()} &middot; with you &middot; {upcomingRide.seats} seats</div>
             </div>
             <span className="ride-status" style={{ background: 'rgba(79, 189, 186, 0.1)', color: '#4FBDBA', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600 }}>Open</span>
           </div>
         ) : (
-          <div style={{ padding: '40px 20px', color: '#8B9298', textAlign: 'center', background: '#1B2025', borderRadius: '16px', border: '1px dashed #252B31' }}>
-            No upcoming rides scheduled.
+          <div style={{ padding: '30px 20px', color: '#8B9298', textAlign: 'center', background: '#1B2025', borderRadius: '16px', border: '1px dashed #252B31' }}>
+            No rides posted yet. Tap <strong>Offer a ride</strong> above to post your route!
           </div>
         )}
       </section>

@@ -6,6 +6,7 @@ import Button from '../components/Button'
 import SOSButton from '../components/SOSButton'
 import { supabase } from '../lib/supabase'
 import { useApp } from '../context/AppContext'
+import { sendSystemNotification, requestNotificationPermission } from '../lib/pushNotifications'
 
 export default function RideDetail() {
   const { id } = useParams()
@@ -137,6 +138,12 @@ export default function RideDetail() {
   }, [ride, user])
 
   const handleBook = async () => {
+    // SECURITY CHECK: Drivers CANNOT book their own posted ride!
+    if (user && ride && (user.id === ride.driver_id || user.email === ride.driver?.email)) {
+      setErrorMsg("🚗 You are the driver of this ride! You cannot book your own posted trip.")
+      return
+    }
+
     if (ride.gender_pref === 'female_only' && user?.gender !== 'female') {
       setErrorMsg("This ride is restricted to women only by the driver.")
       return
@@ -145,6 +152,9 @@ export default function RideDetail() {
       setErrorMsg("This ride is restricted to men only by the driver.")
       return
     }
+
+    // Ask for system push notification permission
+    requestNotificationPermission()
 
     setBookingState('pending')
     setRideData(prev => ({ ...prev, requestedAt: new Date().toISOString() }))
@@ -157,7 +167,16 @@ export default function RideDetail() {
       status: 'pending'
     }).select().single()
     
-    if (data) setBooking(data)
+    if (data) {
+      setBooking(data)
+      
+      // Trigger Web System Push Notification popup
+      sendSystemNotification({
+        title: `🚗 New Booking Request!`,
+        body: `${user?.name || 'A passenger'} booked a seat on your ride from ${ride.from_location} to ${ride.to_location}. Tap to open chat!`,
+        url: `/chat`
+      })
+    }
     if (error) setErrorMsg(error.message)
   }
 
