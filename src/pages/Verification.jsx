@@ -1,31 +1,80 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { supabase } from '../lib/supabase'
 import Button from '../components/Button'
 
-const steps = ['id', 'license', 'liveness', 'car']
-
 function FileDropzone({ label, onUpload }) {
-  const [uploaded, setUploaded] = useState(false)
+  const [filePreview, setFilePreview] = useState(null)
+  const [fileName, setFileName] = useState('')
+  const fileInputRef = useRef(null)
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Create local object URL for instant preview
+      const previewUrl = URL.createObjectURL(file)
+      setFilePreview(previewUrl)
+      setFileName(file.name)
+      if (onUpload) onUpload(file, previewUrl)
+    }
+  }
+
+  const handleRemove = (e) => {
+    e.stopPropagation()
+    setFilePreview(null)
+    setFileName('')
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (onUpload) onUpload(null, null)
+  }
 
   return (
     <div className="mt-4">
       <label className="mb-2 block text-sm font-medium text-ink-50">{label}</label>
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
       <div
-        className={`relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 transition-colors ${
-          uploaded ? 'border-beacon bg-beacon/5' : 'border-ink-600 bg-ink-800/50 hover:border-ink-500'
+        className={`relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 transition-all overflow-hidden ${
+          filePreview ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-ink-600 bg-ink-800/50 hover:border-amber-400/50'
         }`}
-        onClick={() => {
-          setUploaded(true)
-          if (onUpload) onUpload()
-        }}
+        onClick={() => fileInputRef.current?.click()}
       >
-        <span className="text-3xl mb-2">{uploaded ? '✅' : '📷'}</span>
-        <span className="text-sm font-medium text-ink-100">
-          {uploaded ? 'Uploaded successfully' : 'Tap to upload or take photo'}
-        </span>
+        {filePreview ? (
+          <div className="flex flex-col items-center w-full">
+            <div className="relative w-full h-36 rounded-xl overflow-hidden mb-3 border border-emerald-500/30 group">
+              <img src={filePreview} alt="Uploaded document" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={handleRemove}
+                className="absolute top-2 right-2 p-1.5 rounded-full bg-ink-900/80 hover:bg-red-500 text-white transition-colors shadow-md"
+                title="Remove photo"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+              <span>✅</span> {fileName || 'Document attached'}
+            </span>
+          </div>
+        ) : (
+          <>
+            <span className="text-3xl mb-2">📷</span>
+            <span className="text-sm font-medium text-ink-100 mb-1">
+              Tap to upload or select photo
+            </span>
+            <span className="text-[11px] text-ink-400">
+              Supports PNG, JPG, WEBP (Max 5MB)
+            </span>
+          </>
+        )}
       </div>
     </div>
   )
@@ -41,24 +90,24 @@ export default function Verification() {
   const [loading, setLoading] = useState(false)
 
   const [form, setForm] = useState({
-    idFront: false,
-    idBack: false,
-    licenseFront: false,
-    licenseBack: false,
-    selfie: false,
+    idFront: null,
+    idBack: null,
+    licenseFront: null,
+    licenseBack: null,
+    selfie: null,
     carMake: '',
     carModel: '',
     carPlate: '',
-    carPhoto: false
+    carPhoto: null
   })
 
   const step = steps[stepIndex]
 
   const canContinue = () => {
-    if (step === 'id') return form.idFront && form.idBack
-    if (step === 'license') return form.licenseFront && form.licenseBack
-    if (step === 'liveness') return form.selfie
-    if (step === 'car') return form.carMake && form.carModel && form.carPlate && form.carPhoto
+    if (step === 'id') return Boolean(form.idFront) && Boolean(form.idBack)
+    if (step === 'license') return Boolean(form.licenseFront) && Boolean(form.licenseBack)
+    if (step === 'liveness') return Boolean(form.selfie)
+    if (step === 'car') return form.carMake && form.carModel && form.carPlate && Boolean(form.carPhoto)
     return false
   }
 
@@ -72,11 +121,11 @@ export default function Verification() {
         user_id: user.id,
         car_details: { make: form.carMake, model: form.carModel, plate: form.carPlate },
         images: { 
-          idFront: 'https://images.unsplash.com/photo-1621252179027-94459d278660?w=500&q=80',
-          idBack: 'https://images.unsplash.com/photo-1621252179027-94459d278660?w=500&q=80',
-          license: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500&q=80',
-          selfie: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500&q=80',
-          car: 'https://images.unsplash.com/photo-1590362891991-f776e747a588?w=500&q=80'
+          idFront: form.idFront || 'https://images.unsplash.com/photo-1621252179027-94459d278660?w=500&q=80',
+          idBack: form.idBack || 'https://images.unsplash.com/photo-1621252179027-94459d278660?w=500&q=80',
+          license: form.licenseFront || 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500&q=80',
+          selfie: form.selfie || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500&q=80',
+          car: form.carPhoto || 'https://images.unsplash.com/photo-1590362891991-f776e747a588?w=500&q=80'
         },
         status: 'pending'
       })
@@ -105,7 +154,7 @@ export default function Verification() {
 
   return (
     <div className="min-h-full bg-ink-900">
-            <div className="mx-auto max-w-xl px-6 py-10">
+      <div className="mx-auto max-w-xl px-6 py-10">
         <div className="mb-8 flex items-center gap-2">
           {steps.map((s, i) => (
             <div key={s} className={`h-1.5 flex-1 rounded-full transition-colors duration-500 ${i <= stepIndex ? 'bg-beacon shadow-glow' : 'bg-ink-700'}`} />
@@ -124,8 +173,8 @@ export default function Verification() {
                   <h1 className="font-display text-2xl font-semibold text-white">Upload your CNIC</h1>
                   <p className="mt-1 text-sm text-ink-100">Required for platform safety. Your ID is securely encrypted and never shared with riders.</p>
                 </div>
-                <FileDropzone label="Front of ID" onUpload={() => setForm({ ...form, idFront: true })} />
-                <FileDropzone label="Back of ID" onUpload={() => setForm({ ...form, idBack: true })} />
+                <FileDropzone label="Front of ID" onUpload={(file, previewUrl) => setForm({ ...form, idFront: previewUrl })} />
+                <FileDropzone label="Back of ID" onUpload={(file, previewUrl) => setForm({ ...form, idBack: previewUrl })} />
               </motion.div>
             )}
 
@@ -135,8 +184,8 @@ export default function Verification() {
                   <h1 className="font-display text-2xl font-semibold text-white">Driving License</h1>
                   <p className="mt-1 text-sm text-ink-100">Must be valid and issued in Pakistan.</p>
                 </div>
-                <FileDropzone label="Front of License" onUpload={() => setForm({ ...form, licenseFront: true })} />
-                <FileDropzone label="Back of License" onUpload={() => setForm({ ...form, licenseBack: true })} />
+                <FileDropzone label="Front of License" onUpload={(file, previewUrl) => setForm({ ...form, licenseFront: previewUrl })} />
+                <FileDropzone label="Back of License" onUpload={(file, previewUrl) => setForm({ ...form, licenseBack: previewUrl })} />
               </motion.div>
             )}
 
@@ -146,7 +195,7 @@ export default function Verification() {
                   <h1 className="font-display text-2xl font-semibold text-white">Liveness Check</h1>
                   <p className="mt-1 text-sm text-ink-100">Take a quick selfie so we can match it with your ID.</p>
                 </div>
-                <FileDropzone label="Take Selfie" onUpload={() => setForm({ ...form, selfie: true })} />
+                <FileDropzone label="Take Selfie" onUpload={(file, previewUrl) => setForm({ ...form, selfie: previewUrl })} />
               </motion.div>
             )}
 
@@ -187,7 +236,7 @@ export default function Verification() {
                   </div>
                 </div>
 
-                <FileDropzone label="Photo of your Car" onUpload={() => setForm({ ...form, carPhoto: true })} />
+                <FileDropzone label="Photo of your Car" onUpload={(file, previewUrl) => setForm({ ...form, carPhoto: previewUrl })} />
               </motion.div>
             )}
           </AnimatePresence>
