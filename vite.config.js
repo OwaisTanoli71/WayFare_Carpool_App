@@ -28,6 +28,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4 MiB limit to prevent caching rejections
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpeg}'],
         runtimeCaching: [
           {
@@ -41,5 +42,14 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
+    },
+  },
   server: { port: 5173 }
 })

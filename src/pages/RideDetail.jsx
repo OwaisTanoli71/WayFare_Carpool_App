@@ -22,6 +22,8 @@ export default function RideDetail() {
   
   const [ride, setRide] = useState(null)
   const [loadingRide, setLoadingRide] = useState(true)
+  
+  const isDriver = user && ride && (user.id === ride.driver_id || user.email === ride.driver?.email);
 
   // States: 'initial', 'pending', 'approved', 'starting', 'verified', 'completed'
   const [bookingState, setBookingState] = useState('initial') 
@@ -288,11 +290,28 @@ export default function RideDetail() {
   }
 
   const handleDriverCancelRide = async () => {
-    if (!window.confirm("Are you sure you want to cancel this ride offer? Passengers will be notified.")) return
+    const reason = window.prompt("Why are you cancelling this ride? (This reason will be shared with booked passengers)")
+    if (reason === null) return // Cancelled prompt
+    
     const { error } = await supabase.from('rides').update({ status: 'cancelled' }).eq('id', ride.id)
     if (!error) {
       setRide(prev => ({ ...prev, status: 'cancelled' }))
-      alert("Ride status set to cancelled.")
+      
+      // Automatically notify booked passengers in chat
+      const { data: activeBookings } = await supabase.from('bookings').select('rider_id').eq('ride_id', ride.id).in('status', ['pending', 'approved', 'verified'])
+      
+      if (activeBookings && activeBookings.length > 0) {
+        for (const booking of activeBookings) {
+          await supabase.from('messages').insert({
+            ride_id: ride.id,
+            sender_id: user.id,
+            text: `⚠️ Notice: I have had to cancel this ride offer. Reason: ${reason || 'No reason provided.'}`
+          })
+        }
+        alert(`Ride cancelled. ${activeBookings.length} passenger(s) have been automatically notified in chat.`)
+      } else {
+        alert("Ride cancelled successfully.")
+      }
     }
   }
 
@@ -338,8 +357,12 @@ export default function RideDetail() {
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white tracking-wide">Trip Management</h3>
-                <p className="text-[11px] text-ink-400 uppercase tracking-wider">Driver & Admin Controls</p>
+                <h3 className="text-sm font-bold text-white tracking-wide">
+                  {user.role === 'admin' ? 'Trip Management' : 'Manage Ride'}
+                </h3>
+                <p className="text-[11px] text-ink-400 uppercase tracking-wider">
+                  {user.role === 'admin' ? 'Driver & Admin Controls' : 'Your Ride Options'}
+                </p>
               </div>
             </div>
             <div className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${
@@ -525,7 +548,8 @@ export default function RideDetail() {
         )}
 
         {/* Footer Actions */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        {!isDriver && (
+          <div className="flex flex-col sm:flex-row gap-4">
           {bookingState === 'initial' && (
             <button className="submit-btn" style={{ flex: 1 }} onClick={handleBook}>
               Request to book
@@ -551,6 +575,7 @@ export default function RideDetail() {
             Report
           </button>
         </div>
+        )}
       </div>
     </div>
   )
