@@ -106,39 +106,53 @@ export default function Dashboard() {
             {driverRides.map(r => (
               <div 
                 key={r.id}
-                className="p-4 rounded-2xl bg-[#1B2025] border border-[#252B31] flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-amber-500/30 transition-all"
+                className="group relative overflow-hidden rounded-[1.5rem] bg-ink-800/40 border border-ink-700/60 hover:bg-ink-800/60 hover:border-amber-500/40 transition-all duration-300 shadow-sm hover:shadow-[0_0_20px_rgba(245,158,11,0.05)] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-5"
               >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-white font-display">{r.from_location} &rarr; {r.to_location}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                      r.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
-                      r.status === 'cancelled' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center justify-between sm:justify-start gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20 text-amber-500">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                      </div>
+                      <span className="text-base font-bold text-white tracking-wide font-display">{r.from_location} &rarr; {r.to_location}</span>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                      r.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                      r.status === 'cancelled' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                     }`}>
                       {r.status || 'open'}
                     </span>
                   </div>
-                  <div className="text-xs text-ink-400 flex items-center gap-3">
-                    <span>Fare: <strong className="text-amber-400">Rs {r.price}</strong></span>
-                    <span>•</span>
-                    <span>Seats: <strong>{r.seats} available</strong></span>
-                    <span>•</span>
-                    <span>Date: {new Date(r.date).toLocaleDateString()}</span>
+                  
+                  <div className="grid grid-cols-3 gap-2 bg-ink-900/50 rounded-xl p-3 border border-ink-800/50">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase text-ink-500 font-bold tracking-wider mb-0.5">Fare</span>
+                      <span className="text-sm font-semibold text-amber-400">Rs {r.price}</span>
+                    </div>
+                    <div className="flex flex-col border-l border-ink-700/50 pl-3">
+                      <span className="text-[10px] uppercase text-ink-500 font-bold tracking-wider mb-0.5">Seats</span>
+                      <span className="text-sm font-semibold text-white">{r.seats} left</span>
+                    </div>
+                    <div className="flex flex-col border-l border-ink-700/50 pl-3">
+                      <span className="text-[10px] uppercase text-ink-500 font-bold tracking-wider mb-0.5">Date</span>
+                      <span className="text-sm font-semibold text-white">{new Date(r.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric'})}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-row sm:flex-col items-center justify-end gap-2 sm:w-36 shrink-0 mt-1 sm:mt-0">
                   <button
                     onClick={() => navigate(`/ride/${r.id}`)}
-                    className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 text-xs font-bold transition-all"
+                    className="w-full px-4 py-2.5 rounded-xl bg-amber-500 text-ink-900 font-bold text-sm shadow-[0_0_15px_rgba(245,158,11,0.2)] hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all flex items-center justify-center gap-2 group-hover:-translate-y-0.5"
                   >
-                    🚗 Manage Trip
+                    Manage Trip
                   </button>
                   <button
                     onClick={() => navigate('/chat')}
-                    className="px-3 py-1.5 rounded-xl bg-ink-800 hover:bg-ink-700 text-white border border-ink-700 text-xs font-bold transition-all"
+                    className="w-full px-4 py-2.5 rounded-xl bg-ink-800 hover:bg-ink-700 text-white border border-ink-700 text-sm font-semibold transition-all flex items-center justify-center gap-2 group-hover:border-ink-600"
                   >
-                    💬 Chat
+                    <svg className="w-4 h-4 text-ink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                    Chat
                   </button>
                 </div>
               </div>

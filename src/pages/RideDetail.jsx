@@ -8,6 +8,13 @@ import { supabase } from '../lib/supabase'
 import { useApp } from '../context/AppContext'
 import { sendSystemNotification, requestNotificationPermission } from '../lib/pushNotifications'
 
+const getInitials = (name) => {
+  if (!name || name === 'Unknown') return 'U';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) return words[0].charAt(0).toUpperCase();
+  return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+};
+
 export default function RideDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -324,40 +331,53 @@ export default function RideDetail() {
 
       {/* DRIVER / ADMIN RIDE CONTROL PANEL */}
       {user && (user.id === ride.driver_id || user.role === 'admin' || user.email === 'admin@wayfare.com') && (
-        <div className="mb-6 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 space-y-3 shadow-lg">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-              <span>🚗</span> Driver & Admin Trip Management
-            </span>
-            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-ink-900 text-white uppercase border border-ink-700">
+        <div className="mb-8 rounded-3xl border border-ink-700/80 bg-gradient-to-b from-ink-800/80 to-ink-900/80 p-5 shadow-2xl backdrop-blur-xl">
+          <div className="flex items-center justify-between border-b border-ink-700/60 pb-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white tracking-wide">Trip Management</h3>
+                <p className="text-[11px] text-ink-400 uppercase tracking-wider">Driver & Admin Controls</p>
+              </div>
+            </div>
+            <div className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${
+              ride.status === 'open' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
+              ride.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+              'bg-red-500/10 text-red-400 border-red-500/30'
+            }`}>
               {ride.status || 'open'}
-            </span>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 pt-1">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
             {ride.status !== 'completed' && (
               <button
                 onClick={handleDriverCompleteRide}
-                className="px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-sm font-semibold transition-all flex items-center justify-center gap-2"
               >
-                ✓ Mark Completed
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                Complete Ride
               </button>
             )}
 
             {ride.status === 'open' && (
               <button
                 onClick={handleDriverCancelRide}
-                className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-sm font-semibold transition-all flex items-center justify-center gap-2"
               >
-                ⚠️ Cancel Ride
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                Cancel Ride
               </button>
             )}
 
             <button
               onClick={handleDriverDeleteRide}
-              className="px-3.5 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm ml-auto"
+              className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-sm font-semibold transition-all flex items-center justify-center gap-2 sm:ml-auto"
             >
-              🗑️ Delete Ride Offer
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              Delete Offer
             </button>
           </div>
         </div>
@@ -366,10 +386,10 @@ export default function RideDetail() {
       <div className="panel">
         <div className="flex flex-col sm:flex-row gap-4 sm:justify-between sm:items-start mb-8">
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <div className="avatar lg">{ride.driver?.name?.charAt(0) || 'U'}</div>
+            <div className="avatar lg font-display">{getInitials(ride.driver?.name)}</div>
             <div>
               <div style={{ fontSize: '20px', fontWeight: 600, fontFamily: 'Fraunces, serif', marginBottom: '2px' }}>
-                {ride.driver?.name || 'Unknown'} {ride.driver?.verified && <span style={{ fontSize: '12px', background: '#1E3A39', color: '#4FBDBA', padding: '2px 8px', borderRadius: '10px', marginLeft: '6px', verticalAlign: 'middle' }}>✓ Verified</span>}
+                {ride.driver?.name || 'Unknown Driver'} {ride.driver?.verified && <span style={{ fontSize: '12px', background: '#1E3A39', color: '#4FBDBA', padding: '2px 8px', borderRadius: '10px', marginLeft: '6px', verticalAlign: 'middle' }}>✓ Verified</span>}
               </div>
               <div style={{ color: '#8B9298', fontSize: '13px' }}>
                 ★ {stats.rating > 0 ? stats.rating : (ride.driver?.rating || 'New')} &middot; {stats.completed_rides} trips &middot; {ride.car}

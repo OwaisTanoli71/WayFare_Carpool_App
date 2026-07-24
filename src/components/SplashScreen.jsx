@@ -2,17 +2,26 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function SplashScreen({ onFinish }) {
-  const [isVisible, setIsVisible] = useState(true)
+  // Only show the splash screen once per session
+  const [isVisible, setIsVisible] = useState(() => {
+    return sessionStorage.getItem('wayfare_splash_seen') !== 'true'
+  })
 
   useEffect(() => {
+    if (!isVisible) {
+      if (onFinish) onFinish()
+      return
+    }
+
     // Ultra-smooth 1.2s brand splash timing
     const timer = setTimeout(() => {
       setIsVisible(false)
+      sessionStorage.setItem('wayfare_splash_seen', 'true')
       if (onFinish) onFinish()
     }, 1200)
 
     return () => clearTimeout(timer)
-  }, [onFinish])
+  }, [isVisible, onFinish])
 
   return (
     <AnimatePresence>
