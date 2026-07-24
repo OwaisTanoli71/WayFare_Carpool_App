@@ -27,6 +27,7 @@ export default function RideDetail() {
 
   // States: 'initial', 'pending', 'approved', 'starting', 'verified', 'completed'
   const [bookingState, setBookingState] = useState('initial') 
+  const [driverBookings, setDriverBookings] = useState([])
   const [pin, setPin] = useState(null)
   const [enteredPin, setEnteredPin] = useState('')
   const [stats, setStats] = useState({ rating: 0, tags: [], completed_rides: 0 })
@@ -117,34 +118,56 @@ export default function RideDetail() {
   // Fetch Booking Status
   useEffect(() => {
     if (!ride || !user) return
-    async function fetchBooking() {
-      const { data } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('ride_id', ride.id)
-        .eq('rider_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-      
-      if (data) {
-        setBooking(data)
-        setBookingState(data.status)
-      }
-    }
-    fetchBooking()
 
-    const channel = supabase.channel(`booking_${ride.id}_${user.id}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `ride_id=eq.${ride.id}` }, (payload) => {
-        if (payload.new.rider_id === user.id) {
-          setBooking(payload.new)
-          setBookingState(payload.new.status)
+    if (!isDriver) {
+      async function fetchBooking() {
+        const { data } = await supabase
+          .from('bookings')
+          .select('*')
+          .eq('ride_id', ride.id)
+          .eq('rider_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+        
+        if (data) {
+          setBooking(data)
+          setBookingState(data.status)
         }
-      })
-      .subscribe()
+      }
+      fetchBooking()
 
-    return () => supabase.removeChannel(channel)
-  }, [ride, user])
+      const channel = supabase.channel(`booking_${ride.id}_${user.id}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `ride_id=eq.${ride.id}` }, (payload) => {
+          if (payload.new.rider_id === user.id) {
+            setBooking(payload.new)
+            setBookingState(payload.new.status)
+          }
+        })
+        .subscribe()
+
+      return () => supabase.removeChannel(channel)
+    } else {
+      async function fetchDriverBookings() {
+        const { data } = await supabase
+          .from('bookings')
+          .select('*, rider:users(name, avatar)')
+          .eq('ride_id', ride.id)
+          .order('created_at', { ascending: false })
+        
+        if (data) setDriverBookings(data)
+      }
+      fetchDriverBookings()
+
+      const channel = supabase.channel(`driver_bookings_${ride.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `ride_id=eq.${ride.id}` }, () => {
+          fetchDriverBookings()
+        })
+        .subscribe()
+
+      return () => supabase.removeChannel(channel)
+    }
+  }, [ride, user, isDriver])
 
   const handleBook = async () => {
     // SECURITY CHECK: Drivers CANNOT book their own posted ride!
@@ -179,17 +202,20 @@ export default function RideDetail() {
     if (data) {
       setBooking(data)
       
-      // Trigger Web System Push Notification popup
-      sendSystemNotification({
-        title: `🚗 New Booking Request!`,
-        body: `${user?.name || 'A passenger'} booked a seat on your ride from ${ride.from_location} to ${ride.to_location}. Tap to open chat!`,
-        url: `/chat`
-      })
+      // Notifications are now handled by GlobalNotificationListener
     }
     if (error) setErrorMsg(error.message)
   }
 
-  // Demo: Simulates driver accepting the ride
+  // Driver accepts a specific passenger's booking
+  const handleRealDriverAccept = async (bookingId) => {
+    const { error } = await supabase.from('bookings').update({ status: 'approved' }).eq('id', bookingId)
+    if (!error) {
+      setDriverBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'approved' } : b))
+    }
+  }
+
+  // Demo: Simulates driver accepting the ride (for passenger view fallback)
   const handleDriverAccept = async () => {
     if (!booking) return
     setBookingState('approved')
@@ -344,8 +370,14 @@ export default function RideDetail() {
 
   return (
     <div style={{ maxWidth: '640px', margin: '0 auto', paddingTop: '10px' }}>
-      <button onClick={() => navigate(-1)} className="panel-link" style={{ marginBottom: '20px', display: 'inline-block' }}>
-        &larr; Back to results
+      <button 
+        onClick={() => navigate(-1)} 
+        className="group flex items-center gap-2 px-4 py-2 mb-6 rounded-full bg-ink-800/40 hover:bg-ink-800/80 border border-ink-700/50 text-ink-300 hover:text-white transition-all shadow-lg backdrop-blur-sm w-fit"
+      >
+        <svg className="w-4 h-4 text-amber-500 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        <span className="text-sm font-semibold tracking-wide">Back to results</span>
       </button>
 
       {/* DRIVER / ADMIN RIDE CONTROL PANEL */}
@@ -403,6 +435,35 @@ export default function RideDetail() {
               Delete Offer
             </button>
           </div>
+
+          {driverBookings.length > 0 && (
+            <div className="mt-6 border-t border-ink-700/60 pt-4 w-full">
+              <h4 className="text-sm font-bold text-white mb-3">Passenger Requests</h4>
+              <div className="space-y-3">
+                {driverBookings.map(b => (
+                  <div key={b.id} className="flex items-center justify-between bg-ink-900/50 p-3 rounded-xl border border-ink-700/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-ink-700 flex items-center justify-center text-xs font-bold text-white font-display">
+                        {getInitials(b.rider?.name)}
+                      </div>
+                      <div>
+                        <p className="text-sm text-white font-medium">{b.rider?.name || 'Passenger'}</p>
+                        <p className="text-xs text-ink-400 capitalize">Status: <span className={b.status === 'pending' ? 'text-amber-400' : 'text-emerald-400'}>{b.status}</span></p>
+                      </div>
+                    </div>
+                    {b.status === 'pending' && (
+                      <button 
+                        onClick={() => handleRealDriverAccept(b.id)}
+                        className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold uppercase tracking-wider transition-all"
+                      >
+                        Accept
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -457,14 +518,7 @@ export default function RideDetail() {
         {bookingState === 'pending' && (
           <div style={{ padding: '24px', background: '#1B2025', border: '1px dashed #5C646B', borderRadius: '16px', textAlign: 'center', marginBottom: '30px' }}>
             <h3 style={{ color: '#F1EDE5', margin: '0 0 8px', fontSize: '16px' }}>Waiting for Approval</h3>
-            <p style={{ color: '#8B9298', fontSize: '13px', margin: '0 0 16px' }}>Your request has been sent to {ride.driver?.name?.split(' ')[0] || 'the driver'}. Waiting for them to accept.</p>
-            
-            <div style={{ borderTop: '1px solid #252B31', paddingTop: '16px' }}>
-              <p style={{ color: '#8B9298', fontSize: '11px', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '1px' }}>Driver Simulation</p>
-              <button onClick={handleDriverAccept} style={{ padding: '8px 16px', borderRadius: '8px', background: '#20262C', color: '#E8A33D', border: '1px solid #E8A33D', fontSize: '13px', cursor: 'pointer' }}>
-                Accept Request
-              </button>
-            </div>
+            <p style={{ color: '#8B9298', fontSize: '13px', margin: '0' }}>Your request has been sent to {ride.driver?.name?.split(' ')[0] || 'the driver'}. Waiting for them to accept.</p>
           </div>
         )}
 

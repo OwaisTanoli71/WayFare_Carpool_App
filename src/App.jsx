@@ -9,6 +9,8 @@ import Chat from './pages/Chat'
 import PostRide from './pages/PostRide'
 import FindRide from './pages/FindRide'
 import Profile from './pages/Profile'
+import MyRides from './pages/MyRides'
+import ManageRides from './pages/ManageRides'
 import TrustedContacts from './pages/TrustedContacts'
 import Circles from './pages/Circles'
 import Verification from './pages/Verification'
@@ -27,6 +29,8 @@ import DashboardLayout from './components/DashboardLayout'
 import InactivityTracker from './components/InactivityTracker'
 import PwaUpdatePrompt from './components/PwaUpdatePrompt'
 import SplashScreen from './components/SplashScreen'
+import GlobalNotificationListener from './components/GlobalNotificationListener'
+import PermissionsPrompt from './components/PermissionsPrompt'
 
 export default function App() {
   return (
@@ -37,6 +41,8 @@ export default function App() {
       <InstallPrompt />
       <PwaUpdatePrompt />
       <HelpWidget />
+      <GlobalNotificationListener />
+      <PermissionsPrompt />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
@@ -51,6 +57,8 @@ export default function App() {
           <Route path="/chat" element={<Chat />} />
           <Route path="/post-ride" element={<PostRide />} />
           <Route path="/find-ride" element={<FindRide />} />
+          <Route path="/my-rides" element={<MyRides />} />
+          <Route path="/manage-rides" element={<ManageRides />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/verify" element={<Verification />} />
           <Route path="/trusted-contacts" element={<TrustedContacts />} />

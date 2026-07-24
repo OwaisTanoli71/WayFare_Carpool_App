@@ -6,6 +6,31 @@ import { supabase } from '../lib/supabase'
 export default function Profile() {
   const { user } = useApp()
   const navigate = useNavigate()
+  const [verificationStatus, setVerificationStatus] = useState(null)
+  const [isVerificationLoading, setIsVerificationLoading] = useState(true)
+
+  useEffect(() => {
+    async function checkVerification() {
+      if (!user) return
+      try {
+        const { data } = await supabase.from('verifications')
+          .select('status')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+          
+        if (data) {
+          setVerificationStatus(data.status)
+        }
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setIsVerificationLoading(false)
+      }
+    }
+    checkVerification()
+  }, [user])
 
   if (!user) {
     navigate('/login')
@@ -13,23 +38,25 @@ export default function Profile() {
   }
 
   const [reputation, setReputation] = useState({ rating: 0, tags: [] })
+  const [isReputationLoading, setIsReputationLoading] = useState(true)
   const [showVerificationModal, setShowVerificationModal] = useState(true)
 
   useEffect(() => {
     if (!user) return
     async function fetchReputation() {
-      const { data, error } = await supabase.rpc('get_user_reputation', { target_user_id: user.id })
-      if (!error && data) {
-        setReputation(data)
+      try {
+        const { data, error } = await supabase.rpc('get_user_reputation', { target_user_id: user.id })
+        if (!error && data) {
+          setReputation(data)
+        }
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setIsReputationLoading(false)
       }
     }
     fetchReputation()
   }, [user?.id])
-
-  if (!user) {
-    navigate('/login')
-    return null
-  }
 
   const handleAvatarChange = async (e) => {
     const file = e.target.files[0]
@@ -88,7 +115,7 @@ export default function Profile() {
 
   return (
     <div className="max-w-[1000px] mx-auto pb-10 px-4 sm:px-6">
-      <div className="grid lg:grid-cols-[1.5fr_1fr] gap-6">
+      <div className="grid lg:grid-cols-[1.5fr_1fr] gap-6 items-start">
         
         {/* Left Column */}
         <div className="flex flex-col gap-6">
@@ -126,7 +153,9 @@ export default function Profile() {
                 <div className="text-[14px] sm:text-[15px] text-[#8B9298] mb-4 sm:mb-5">{user.email}</div>
                 
                 <div className="inline-flex items-center gap-2 text-[11px] sm:text-[12px] font-medium text-[#FFB238] bg-[#FFB238]/10 px-4 py-2 rounded-xl border border-[#FFB238]/20 leading-snug">
-                  <span className="text-sm shrink-0">📸</span>
+                  <span className="text-sm shrink-0 flex items-center justify-center">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                  </span>
                   <span>Upload a clear, front-view picture for safety.</span>
                 </div>
               </div>
@@ -143,10 +172,14 @@ export default function Profile() {
             </div>
             <div className="bg-gradient-to-br from-[#1E252C] to-[#14181C] p-5 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-white/5 flex flex-col justify-center shadow-lg hover:border-white/10 transition-colors">
               <div className="text-[11px] sm:text-[12px] text-[#8B9298] font-semibold uppercase tracking-wider mb-1.5">Rating</div>
-              <div className="text-[18px] sm:text-[22px] font-display text-[#FFB238] font-medium flex items-center gap-1.5">
-                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                {reputation.rating || 'New'}
-              </div>
+              {isReputationLoading ? (
+                <div className="h-[22px] w-16 skeleton rounded-md mt-1"></div>
+              ) : (
+                <div className="text-[18px] sm:text-[22px] font-display text-[#FFB238] font-medium flex items-center gap-1.5">
+                  <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                  {reputation.rating || 'New'}
+                </div>
+              )}
             </div>
           </div>
 
@@ -190,8 +223,8 @@ export default function Profile() {
         </div>
 
         {/* Right Column (Verification Banner) - Popup on Mobile */}
-        <div className={`${showVerificationModal ? 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm lg:static lg:flex lg:p-0 lg:bg-transparent lg:z-auto' : 'hidden lg:block'} h-full`}>
-          <div className="relative w-full max-w-md lg:max-w-none h-auto lg:h-full shadow-2xl lg:shadow-none">
+        <div className={`${showVerificationModal ? 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm lg:static lg:block lg:p-0 lg:bg-transparent lg:z-auto' : 'hidden lg:block'}`}>
+          <div className="relative w-full max-w-md lg:max-w-none h-auto shadow-2xl lg:shadow-none">
             
             {/* Mobile Close Button */}
             <button 
@@ -204,8 +237,16 @@ export default function Profile() {
               </svg>
             </button>
 
-          {(user.user_metadata?.verified || user.verified) ? (
-            <section className="h-full bg-gradient-to-br from-[#1A2E2A] to-[#14181C] rounded-[24px] p-6 sm:p-8 border border-[#4FBDBA]/20 flex flex-col shadow-lg relative overflow-hidden">
+          {isVerificationLoading ? (
+            <section className="bg-gradient-to-br from-[#1A2026] to-[#14181C] rounded-[24px] p-6 sm:p-8 border border-white/5 flex flex-col shadow-lg relative overflow-hidden">
+              <div className="w-14 h-14 shrink-0 rounded-[16px] skeleton mb-6 border border-white/10"></div>
+              <div className="h-6 w-3/4 skeleton rounded-lg mb-4"></div>
+              <div className="h-4 w-full skeleton rounded-md mb-2"></div>
+              <div className="h-4 w-5/6 skeleton rounded-md mb-8"></div>
+              <div className="h-[52px] sm:h-[56px] w-full skeleton rounded-[14px] sm:rounded-[16px]"></div>
+            </section>
+          ) : (user.user_metadata?.verified || user.verified || verificationStatus === 'approved') ? (
+            <section className="bg-gradient-to-br from-[#1A2E2A] to-[#14181C] rounded-[24px] p-6 sm:p-8 border border-[#4FBDBA]/20 flex flex-col shadow-lg relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#4FBDBA]/10 rounded-full blur-[40px] pointer-events-none"></div>
               
               <div className="w-14 h-14 shrink-0 rounded-[16px] bg-[#4FBDBA]/10 flex items-center justify-center text-[#4FBDBA] text-2xl mb-6 border border-[#4FBDBA]/20 backdrop-blur-sm shadow-[0_4px_16px_rgba(79,189,186,0.15)]">&#10003;</div>
@@ -218,7 +259,7 @@ export default function Profile() {
                   : 'You are fully verified to offer and request rides on Wayfare. Your trusted status gives other members confidence to travel with you.'}
               </div>
               
-              <div className="flex flex-col gap-4 mb-8 relative z-10">
+              <div className="flex flex-col gap-4 mb-2 relative z-10">
                 {['Can safely ' + ((user.role || localStorage.getItem('wayfare_role')) === 'rider' ? 'request rides' : 'offer rides to others'), 'Higher priority matching', 'Verified Badge unlocked'].map((text, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <div className="text-[#4FBDBA] bg-[#4FBDBA]/10 rounded-full w-6 h-6 shrink-0 flex items-center justify-center text-xs font-bold border border-[#4FBDBA]/20 shadow-sm">&#10003;</div>
@@ -227,8 +268,28 @@ export default function Profile() {
                 ))}
               </div>
             </section>
+          ) : verificationStatus === 'pending' ? (
+            <section className="bg-gradient-to-br from-[#1E2E40] to-[#14181C] rounded-[24px] p-6 sm:p-8 border border-blue-500/30 flex flex-col shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-[40px] pointer-events-none"></div>
+
+              <div className="w-14 h-14 shrink-0 rounded-[16px] bg-blue-500/10 flex items-center justify-center text-blue-400 text-2xl mb-6 border border-blue-500/20 backdrop-blur-sm shadow-[0_4px_16px_rgba(59,130,246,0.15)]">
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </div>
+              <div className="text-xl sm:text-[22px] text-blue-400 font-semibold mb-3 pr-8">
+                Verification Pending
+              </div>
+              <div className="text-[14px] sm:text-[15px] text-[#8B9298] mb-8 leading-relaxed relative z-10">
+                We have received your documents. Our admin team is currently reviewing your profile to ensure safety. This usually takes less than 24 hours.
+              </div>
+
+              <div className="mt-2 relative z-10">
+                <button disabled className="w-full h-[52px] sm:h-[56px] rounded-[14px] sm:rounded-[16px] bg-ink-800 text-ink-500 font-semibold text-[15px] sm:text-[16px] cursor-not-allowed">
+                  Under Review...
+                </button>
+              </div>
+            </section>
           ) : (
-            <section className="h-full bg-gradient-to-br from-[#2A2218] to-[#14181C] rounded-[24px] p-6 sm:p-8 border border-dashed border-[#FFB238]/30 flex flex-col shadow-lg relative overflow-hidden">
+            <section className="bg-gradient-to-br from-[#2A2218] to-[#14181C] rounded-[24px] p-6 sm:p-8 border border-dashed border-[#FFB238]/30 flex flex-col shadow-lg relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#FFB238]/10 rounded-full blur-[40px] pointer-events-none"></div>
 
               <div className="w-14 h-14 shrink-0 rounded-[16px] bg-[#FFB238]/10 flex items-center justify-center text-[#FFB238] text-2xl mb-6 border border-[#FFB238]/20 backdrop-blur-sm shadow-[0_4px_16px_rgba(255,178,56,0.15)]">&#9888;</div>

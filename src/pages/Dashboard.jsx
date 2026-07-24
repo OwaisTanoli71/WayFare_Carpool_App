@@ -24,20 +24,56 @@ export default function Dashboard() {
         .eq('driver_id', user.id)
         .order('created_at', { ascending: false })
       
+      let latestActive = null;
+
       if (postedRides && postedRides.length > 0) {
-        setDriverRides(postedRides)
-        setUpcomingRide(postedRides[0])
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        
+        const activePosted = postedRides.filter(r => {
+          if (['deleted', 'completed', 'cancelled'].includes(r.status)) return false;
+          const rideDate = new Date(r.date);
+          rideDate.setHours(0,0,0,0);
+          return rideDate >= today;
+        });
+
+        if (activePosted.length > 0) {
+          latestActive = activePosted[0];
+          setDriverRides([latestActive]); // Only store the latest one
+        } else {
+          setDriverRides([]);
+        }
+      }
+
+      if (latestActive) {
+        setUpcomingRide(latestActive);
       } else {
         // 2. Fetch rides booked as passenger
         const { data: userBookings } = await supabase
           .from('bookings')
-          .select(`ride_id, rides:rides(*, driver:users(name, avatar, verified))`)
+          .select(`ride_id, status, rides:rides(*, driver:users(name, avatar, verified))`)
           .eq('rider_id', user.id)
           .order('created_at', { ascending: false })
-          .limit(1)
         
         if (userBookings && userBookings.length > 0) {
-          setUpcomingRide(userBookings[0].rides)
+          const today = new Date();
+          today.setHours(0,0,0,0);
+
+          const activeBookings = userBookings.filter(b => {
+            if (['deleted', 'completed', 'cancelled'].includes(b.status)) return false;
+            const r = b.rides;
+            if (!r || ['deleted', 'completed', 'cancelled'].includes(r.status)) return false;
+            
+            const rideDate = new Date(r.date);
+            rideDate.setHours(0,0,0,0);
+            return rideDate >= today;
+          });
+
+          if (activeBookings.length > 0) {
+            setUpcomingRide(activeBookings[0].rides);
+          } else {
+            setUpcomingRide(null);
+          }
         }
       }
     }
@@ -146,13 +182,6 @@ export default function Dashboard() {
                     className="w-full px-4 py-2.5 rounded-xl bg-amber-500 text-ink-900 font-bold text-sm shadow-[0_0_15px_rgba(245,158,11,0.2)] hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all flex items-center justify-center gap-2 group-hover:-translate-y-0.5"
                   >
                     Manage Trip
-                  </button>
-                  <button
-                    onClick={() => navigate('/chat')}
-                    className="w-full px-4 py-2.5 rounded-xl bg-ink-800 hover:bg-ink-700 text-white border border-ink-700 text-sm font-semibold transition-all flex items-center justify-center gap-2 group-hover:border-ink-600"
-                  >
-                    <svg className="w-4 h-4 text-ink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
-                    Chat
                   </button>
                 </div>
               </div>

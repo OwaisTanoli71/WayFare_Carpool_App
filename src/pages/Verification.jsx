@@ -11,6 +11,7 @@ function LivenessCamera({ onCapture }) {
   const framesRef = useRef([])
   const streamRef = useRef(null)
   const trackingRef = useRef(false)
+  const poseHoldFramesRef = useRef(0)
   const [instruction, setInstruction] = useState('Loading ML models...')
   const [phase, setPhase] = useState(0) // 0: init, 1: straight, 2: left, 3: right, 4: down, 5: captured
   const [modelsLoaded, setModelsLoaded] = useState(false)
@@ -92,6 +93,7 @@ function LivenessCamera({ onCapture }) {
         ctx.strokeText(text, x + 20, y + 40)
         ctx.fillText(text, x + 20, y + 40)
       }
+      
       drawLabel("Straight", 0, 0)
       drawLabel("Left", singleW, 0)
       drawLabel("Right", 0, singleH)
@@ -119,45 +121,74 @@ function LivenessCamera({ onCapture }) {
         const chin = jaw[8]
         const noseTop = landmarks.getNose()[0]
         
-        const leftDist = nose.x - leftEye.x
-        const rightDist = rightEye.x - nose.x
-        const topDist = nose.y - noseTop.y
-        const bottomDist = chin.y - nose.y
+        const leftDist = Math.max(1, nose.x - leftEye.x)
+        const rightDist = Math.max(1, rightEye.x - nose.x)
+        const topDist = Math.max(1, nose.y - noseTop.y)
+        const bottomDist = Math.max(1, chin.y - nose.y)
 
         const yawRatio = rightDist / leftDist
         const pitchRatio = bottomDist / topDist
 
         setPhase((p) => {
+          let poseHit = false;
+
           if (p === 1) { 
-             if (yawRatio > 0.8 && yawRatio < 1.2 && pitchRatio > 1.0 && pitchRatio < 1.6) {
-               framesRef.current.push(snapFrame())
-               setInstruction("Turn head slightly to the left...")
-               return 2
+             // Straight
+             if (yawRatio > 0.7 && yawRatio < 1.3 && pitchRatio > 0.9 && pitchRatio < 1.8) {
+               poseHit = true;
+               if (poseHoldFramesRef.current >= 5) {
+                 framesRef.current.push(snapFrame())
+                 setInstruction("Turn head slightly to the left...")
+                 poseHoldFramesRef.current = 0
+                 return 2
+               }
              }
           } else if (p === 2) {
-             if (yawRatio < 0.6) { 
-               framesRef.current.push(snapFrame())
-               setInstruction("Now, turn slightly to the right...")
-               return 3
+             // Left
+             if (yawRatio < 0.75) { 
+               poseHit = true;
+               if (poseHoldFramesRef.current >= 5) {
+                 framesRef.current.push(snapFrame())
+                 setInstruction("Now, turn slightly to the right...")
+                 poseHoldFramesRef.current = 0
+                 return 3
+               }
              }
           } else if (p === 3) {
-             if (yawRatio > 1.6) { 
-               framesRef.current.push(snapFrame())
-               setInstruction("Finally, look slightly downward...")
-               return 4
+             // Right
+             if (yawRatio > 1.35) { 
+               poseHit = true;
+               if (poseHoldFramesRef.current >= 5) {
+                 framesRef.current.push(snapFrame())
+                 setInstruction("Finally, look slightly downward...")
+                 poseHoldFramesRef.current = 0
+                 return 4
+               }
              }
           } else if (p === 4) {
-             if (pitchRatio < 1.1) { 
-               framesRef.current.push(snapFrame())
-               setTimeout(() => finishSequence(), 0)
-               return 5 
+             // Down
+             if (pitchRatio < 1.25) { 
+               poseHit = true;
+               if (poseHoldFramesRef.current >= 5) {
+                 framesRef.current.push(snapFrame())
+                 poseHoldFramesRef.current = 0
+                 setTimeout(() => finishSequence(), 0)
+                 return 5 
+               }
              }
           }
+          
+          if (poseHit) {
+             poseHoldFramesRef.current += 1
+          } else {
+             poseHoldFramesRef.current = 0
+          }
+          
           return p
         })
       } else {
         setPhase((p) => {
-           if (p > 0 && p < 5) setInstruction("Please position your face in the oval...")
+           if (p > 0 && p < 5) setInstruction("Please position your face in the oval clearly...")
            return p
         })
       }
@@ -198,11 +229,13 @@ function LivenessCamera({ onCapture }) {
             <AnimatePresence>
               {phase === 1 && (
                 <motion.div 
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="absolute top-8 flex flex-col items-center justify-center z-20 text-amber-400"
+                  initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center z-20 text-amber-400 pointer-events-none"
                 >
-                  <motion.div animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
-                    <svg className="w-10 h-10 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                  <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 2 }}>
+                    <svg className="w-16 h-16 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)] opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                    </svg>
                   </motion.div>
                 </motion.div>
               )}
@@ -357,6 +390,18 @@ export default function Verification() {
 
   const [stepIndex, setStepIndex] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [existingStatus, setExistingStatus] = useState(null)
+  
+  useEffect(() => {
+    async function checkExisting() {
+      if (!user) return
+      const { data } = await supabase.from('verifications').select('status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single()
+      if (data && (data.status === 'pending' || data.status === 'approved')) {
+        setExistingStatus(data.status)
+      }
+    }
+    checkExisting()
+  }, [user])
 
   const [form, setForm] = useState({
     idFront: null,
@@ -421,6 +466,36 @@ export default function Verification() {
     }
   }
 
+  if (existingStatus === 'pending') {
+    return (
+      <div className="min-h-screen bg-ink-950 flex flex-col pt-12 items-center px-4">
+        <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400 mb-6">
+          <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-2">Verification Under Review</h2>
+        <p className="text-ink-300 text-center max-w-sm mb-8">
+          You have already submitted your documents. Our team is currently reviewing them. You'll be notified once approved.
+        </p>
+        <Button onClick={() => navigate('/dashboard')}>Return to Dashboard</Button>
+      </div>
+    )
+  }
+
+  if (existingStatus === 'approved') {
+    return (
+      <div className="min-h-screen bg-ink-950 flex flex-col pt-12 items-center px-4">
+        <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400 mb-6">
+          <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-2">Already Verified</h2>
+        <p className="text-ink-300 text-center max-w-sm mb-8">
+          Your account is already fully verified.
+        </p>
+        <Button onClick={() => navigate('/dashboard')}>Return to Dashboard</Button>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-full bg-ink-900">
       <div className="mx-auto max-w-xl px-6 py-10">
@@ -467,7 +542,6 @@ export default function Verification() {
                 {form.selfie ? (
                   <div className="flex flex-col items-center mt-6">
                     <div className="w-full sm:w-[90%] rounded-2xl overflow-hidden border-4 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
-                      {/* We remove transform -scale-x-100 here because the collage has already mirrored the images! */}
                       <img src={form.selfie} alt="4-Direction Liveness Collage" className="w-full h-auto object-cover" />
                     </div>
                     <p className="mt-3 text-xs text-ink-300 text-center">4-Direction Liveness Collage (Straight, Left, Right, Down)</p>

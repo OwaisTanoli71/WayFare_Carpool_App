@@ -21,6 +21,8 @@ export default function DashboardLayout() {
       case '/dashboard': return `Good evening, ${user?.user_metadata?.first_name || 'Driver'}`
       case '/post-ride': return 'Offer a ride'
       case '/find-ride': return 'Find a ride'
+      case '/my-rides': return 'My Rides'
+      case '/manage-rides': return 'Manage Rides'
       case '/chat': return 'Messages'
       case '/circles': return 'My circles'
       case '/earnings': return 'Earnings'

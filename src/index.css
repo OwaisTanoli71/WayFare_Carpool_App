@@ -42,7 +42,7 @@ button { font-family: inherit; }
 }
 .brand-logo { display: flex; justify-content: center; padding-bottom: 18px; margin-bottom: 16px; border-bottom: 1px solid #252B31; }
 .brand-logo img { width: 64px; height: 64px; border-radius: 15px; display: block; }
-.nav-scroll { flex: 1; overflow: hidden; }
+.nav-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; }
 .nav-section + .nav-section { margin-top: 20px; }
 .nav-heading { font-size: 10px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: #5C646B; padding: 0 10px; margin-bottom: 7px; }
 .nav-item {
@@ -313,3 +313,16 @@ button { font-family: inherit; }
   .chat-input-wrapper { padding: 12px; }
   .send-btn { width: 36px; height: 36px; }
 }
+
+.hide-scrollbar::-webkit-scrollbar,
+.custom-scrollbar::-webkit-scrollbar,
+.nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar,
+.custom-scrollbar,
+.nav-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+

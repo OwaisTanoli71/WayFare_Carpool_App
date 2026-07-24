@@ -144,11 +144,13 @@ export default function Chat() {
                  </div>
                  <div className="flex-1 min-w-0">
                    <div className="flex justify-between items-baseline mb-0.5">
-                     <div className="text-xs sm:text-[15px] font-semibold text-white truncate pr-2">{thread.from_location} &rarr; {thread.to_location}</div>
+                     <div className="text-xs sm:text-[15px] font-semibold text-white truncate pr-2">
+                       {isMe ? 'Your Passengers' : thread.driver?.name || 'Driver'}
+                     </div>
                      <div className="text-[10px] sm:text-[11px] text-ink-400 shrink-0">{new Date(thread.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</div>
                    </div>
                    <div className="text-xs sm:text-[13px] text-ink-400 truncate">
-                     {isMe ? 'Your posted ride' : `Driver: ${otherName}`}
+                     {thread.from_location} &rarr; {thread.to_location}
                    </div>
                  </div>
                </div>
@@ -176,21 +178,25 @@ export default function Chat() {
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 </button>
                 <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#FFB238] to-[#c9821f] flex items-center justify-center text-[#14181C] font-bold text-base sm:text-lg shrink-0">
-                  {activeThread.from_location.charAt(0)}
+                  {activeThread.driver_id === user?.id ? 'P' : activeThread.driver?.name?.charAt(0) || 'D'}
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-white font-semibold text-xs sm:text-sm md:text-base truncate leading-tight">
-                    {activeThread.from_location} &rarr; {activeThread.to_location}
+                    {activeThread.driver_id === user?.id ? 'Your Passengers' : activeThread.driver?.name || 'Driver'}
                   </h3>
-                  <div className="text-[11px] sm:text-[12px] text-[#4FBDBA] flex items-center gap-1 font-medium truncate">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#4FBDBA] shadow-[0_0_8px_rgba(79,189,186,0.5)] shrink-0"></span>
-                    {activeThread.status === 'open' ? 'Upcoming Ride' : tripStatus}
+                  <div className="text-[11px] sm:text-[12px] text-ink-400 flex items-center gap-1 font-medium truncate">
+                    {activeThread.from_location} &rarr; {activeThread.to_location}
                   </div>
                 </div>
               </div>
               
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                <span className="text-[11px] sm:text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full">
+                {activeThread.driver_id === user?.id && (
+                  <button onClick={() => window.location.href = `/ride/${activeThread.id}`} className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold tracking-wide transition-all">
+                    Manage Ride
+                  </button>
+                )}
+                <span className="text-[11px] sm:text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full hidden sm:inline-block">
                   Rs {activeThread.price || 0}
                 </span>
                 <button onClick={() => alert('SOS Triggered!')} className="bg-[#E8654F]/10 text-[#E8654F] border border-[#E8654F]/20 hover:bg-[#E8654F]/20 px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full text-xs font-bold tracking-wide flex items-center gap-1 transition-all">
@@ -208,6 +214,9 @@ export default function Chat() {
                 
                 return (
                   <div key={m.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                    {!isMe && showTail && (
+                      <div className="text-[10px] text-ink-400 font-medium mb-1 ml-1">{m.sender?.name || 'Passenger'}</div>
+                    )}
                     <div 
                       className={`max-w-[85%] md:max-w-[70%] px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-[14.5px] leading-relaxed shadow-sm relative ${
                         isMe 
