@@ -1,9 +1,255 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { supabase } from '../lib/supabase'
 import Button from '../components/Button'
+import * as faceapi from '@vladmandic/face-api'
+
+function LivenessCamera({ onCapture }) {
+  const videoRef = useRef(null)
+  const framesRef = useRef([])
+  const streamRef = useRef(null)
+  const trackingRef = useRef(false)
+  const [instruction, setInstruction] = useState('Loading ML models...')
+  const [phase, setPhase] = useState(0) // 0: init, 1: straight, 2: left, 3: right, 4: down, 5: captured
+  const [modelsLoaded, setModelsLoaded] = useState(false)
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model'
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
+        ])
+        setModelsLoaded(true)
+        startCamera()
+      } catch (err) {
+        console.error("ML Error:", err)
+        setInstruction("Failed to load face tracking models.")
+      }
+    }
+    init()
+    
+    return () => {
+      trackingRef.current = false
+      if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop())
+    }
+  }, [])
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+      if (videoRef.current) videoRef.current.srcObject = stream
+      streamRef.current = stream
+      setPhase(1)
+      setInstruction("Look straight ahead...")
+    } catch (err) {
+      console.error("Camera error:", err)
+      setInstruction("Camera access denied.")
+    }
+  }
+
+  const snapFrame = () => {
+    if (!videoRef.current) return null
+    const video = videoRef.current
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth || 480
+    canvas.height = video.videoHeight || 640
+    const ctx = canvas.getContext('2d')
+    ctx.translate(canvas.width, 0)
+    ctx.scale(-1, 1)
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    return canvas
+  }
+
+  const finishSequence = () => {
+    setPhase(5)
+    setInstruction("Liveness verified!")
+
+    const frames = framesRef.current
+    if (frames.length === 4 && frames[0]) {
+      const singleW = frames[0].width
+      const singleH = frames[0].height
+      
+      const collage = document.createElement('canvas')
+      collage.width = singleW * 2
+      collage.height = singleH * 2
+      const ctx = collage.getContext('2d')
+
+      ctx.drawImage(frames[0], 0, 0, singleW, singleH) 
+      ctx.drawImage(frames[1], singleW, 0, singleW, singleH) 
+      ctx.drawImage(frames[2], 0, singleH, singleW, singleH) 
+      ctx.drawImage(frames[3], singleW, singleH, singleW, singleH) 
+      
+      ctx.font = '24px sans-serif'
+      ctx.fillStyle = 'white'
+      ctx.shadowColor = 'black'
+      ctx.shadowBlur = 4
+      ctx.lineWidth = 2
+      const drawLabel = (text, x, y) => {
+        ctx.strokeText(text, x + 20, y + 40)
+        ctx.fillText(text, x + 20, y + 40)
+      }
+      drawLabel("Straight", 0, 0)
+      drawLabel("Left", singleW, 0)
+      drawLabel("Right", 0, singleH)
+      drawLabel("Down", singleW, singleH)
+
+      const dataUrl = collage.toDataURL('image/jpeg', 0.85)
+      
+      if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop())
+      onCapture(dataUrl)
+    }
+  }
+
+  const trackFace = async () => {
+    if (!videoRef.current || !trackingRef.current) return
+
+    try {
+      const detections = await faceapi.detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks()
+      
+      if (detections) {
+        const landmarks = detections.landmarks
+        const nose = landmarks.getNose()[3] 
+        const leftEye = landmarks.getLeftEye()[0] 
+        const rightEye = landmarks.getRightEye()[3] 
+        const jaw = landmarks.getJawOutline()
+        const chin = jaw[8]
+        const noseTop = landmarks.getNose()[0]
+        
+        const leftDist = nose.x - leftEye.x
+        const rightDist = rightEye.x - nose.x
+        const topDist = nose.y - noseTop.y
+        const bottomDist = chin.y - nose.y
+
+        const yawRatio = rightDist / leftDist
+        const pitchRatio = bottomDist / topDist
+
+        setPhase((p) => {
+          if (p === 1) { 
+             if (yawRatio > 0.8 && yawRatio < 1.2 && pitchRatio > 1.0 && pitchRatio < 1.6) {
+               framesRef.current.push(snapFrame())
+               setInstruction("Turn head slightly to the left...")
+               return 2
+             }
+          } else if (p === 2) {
+             if (yawRatio < 0.6) { 
+               framesRef.current.push(snapFrame())
+               setInstruction("Now, turn slightly to the right...")
+               return 3
+             }
+          } else if (p === 3) {
+             if (yawRatio > 1.6) { 
+               framesRef.current.push(snapFrame())
+               setInstruction("Finally, look slightly downward...")
+               return 4
+             }
+          } else if (p === 4) {
+             if (pitchRatio < 1.1) { 
+               framesRef.current.push(snapFrame())
+               setTimeout(() => finishSequence(), 0)
+               return 5 
+             }
+          }
+          return p
+        })
+      } else {
+        setPhase((p) => {
+           if (p > 0 && p < 5) setInstruction("Please position your face in the oval...")
+           return p
+        })
+      }
+    } catch (err) {
+      // Error tracking face, continue loop
+    }
+
+    if (trackingRef.current) {
+      setTimeout(trackFace, 100) // 10 FPS tracking is enough and saves CPU
+    }
+  }
+
+  const handleVideoPlay = () => {
+    if (!modelsLoaded) return
+    trackingRef.current = true
+    trackFace()
+  }
+
+  return (
+    <div className="flex flex-col items-center mt-6 mb-2">
+      <div className="relative w-56 h-72 sm:w-64 sm:h-80 rounded-[100px] overflow-hidden border-4 border-amber-500/40 shadow-[0_0_40px_rgba(245,158,11,0.15)] bg-ink-900 flex items-center justify-center">
+        <video 
+          ref={videoRef} 
+          autoPlay 
+          playsInline 
+          muted 
+          onPlay={handleVideoPlay}
+          className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" 
+        />
+            {/* Scanner line overlay */}
+            <motion.div 
+              animate={{ y: [-160, 160, -160] }}
+              transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
+              className="absolute w-full h-1.5 bg-amber-400/60 shadow-[0_0_20px_rgba(245,158,11,1)] z-10"
+            />
+            
+            {/* Directional Arrows based on phase */}
+            <AnimatePresence>
+              {phase === 1 && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  className="absolute top-8 flex flex-col items-center justify-center z-20 text-amber-400"
+                >
+                  <motion.div animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
+                    <svg className="w-10 h-10 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                  </motion.div>
+                </motion.div>
+              )}
+              {phase === 2 && (
+                <motion.div 
+                  initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
+                  className="absolute left-6 flex items-center justify-center z-20 text-amber-400"
+                >
+                  <motion.div animate={{ x: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
+                    <svg className="w-10 h-10 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                  </motion.div>
+                </motion.div>
+              )}
+              {phase === 3 && (
+                <motion.div 
+                  initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
+                  className="absolute right-6 flex items-center justify-center z-20 text-amber-400"
+                >
+                  <motion.div animate={{ x: [0, 10, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
+                    <svg className="w-10 h-10 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                  </motion.div>
+                </motion.div>
+              )}
+              {phase === 4 && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  className="absolute bottom-8 flex flex-col items-center justify-center z-20 text-amber-400"
+                >
+                  <motion.div animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
+                    <svg className="w-10 h-10 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
+            {/* Optional Oval Mask to darken edges */}
+            <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_50px_rgba(0,0,0,0.8)]" />
+      </div>
+      <div className="mt-6 h-12 flex items-center justify-center w-full bg-ink-800/50 rounded-xl border border-ink-700/50 px-4">
+        <p className={`text-center text-sm font-semibold transition-colors duration-300 ${phase === 5 ? 'text-emerald-400' : 'text-amber-400'}`}>
+          {phase === 5 && <span className="mr-2">✅</span>}
+          {instruction}
+        </p>
+      </div>
+    </div>
+  )
+}
 
 function FileDropzone({ label, id, onUpload }) {
   const [filePreview, setFilePreview] = useState(null)
@@ -17,7 +263,28 @@ function FileDropzone({ label, id, onUpload }) {
       const previewUrl = URL.createObjectURL(file)
       setFilePreview(previewUrl)
       setFileName(file.name)
-      if (onUpload) onUpload(file, previewUrl)
+      
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        let width = img.width
+        let height = img.height
+        const MAX = 1000
+        if (width > height && width > MAX) {
+          height = Math.round(height * (MAX / width))
+          width = MAX
+        } else if (height > MAX) {
+          width = Math.round(width * (MAX / height))
+          height = MAX
+        }
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+        const base64Url = canvas.toDataURL('image/jpeg', 0.6)
+        if (onUpload) onUpload(file, previewUrl, base64Url)
+      }
+      img.src = previewUrl
     }
   }
 
@@ -175,8 +442,8 @@ export default function Verification() {
                   <h1 className="font-display text-2xl font-semibold text-white">Upload your CNIC</h1>
                   <p className="mt-1 text-sm text-ink-100">Required for platform safety. Your ID is securely encrypted and never shared with riders.</p>
                 </div>
-                <FileDropzone label="Front of ID" onUpload={(file, previewUrl) => setForm({ ...form, idFront: previewUrl })} />
-                <FileDropzone label="Back of ID" onUpload={(file, previewUrl) => setForm({ ...form, idBack: previewUrl })} />
+                <FileDropzone label="Front of ID" onUpload={(file, previewUrl, base64Url) => setForm({ ...form, idFront: base64Url || previewUrl })} />
+                <FileDropzone label="Back of ID" onUpload={(file, previewUrl, base64Url) => setForm({ ...form, idBack: base64Url || previewUrl })} />
               </motion.div>
             )}
 
@@ -186,8 +453,8 @@ export default function Verification() {
                   <h1 className="font-display text-2xl font-semibold text-white">Driving License</h1>
                   <p className="mt-1 text-sm text-ink-100">Must be valid and issued in Pakistan.</p>
                 </div>
-                <FileDropzone label="Front of License" onUpload={(file, previewUrl) => setForm({ ...form, licenseFront: previewUrl })} />
-                <FileDropzone label="Back of License" onUpload={(file, previewUrl) => setForm({ ...form, licenseBack: previewUrl })} />
+                <FileDropzone label="Front of License" onUpload={(file, previewUrl, base64Url) => setForm({ ...form, licenseFront: base64Url || previewUrl })} />
+                <FileDropzone label="Back of License" onUpload={(file, previewUrl, base64Url) => setForm({ ...form, licenseBack: base64Url || previewUrl })} />
               </motion.div>
             )}
 
@@ -195,9 +462,25 @@ export default function Verification() {
               <motion.div key="liveness" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} className="space-y-6">
                 <div>
                   <h1 className="font-display text-2xl font-semibold text-white">Liveness Check</h1>
-                  <p className="mt-1 text-sm text-ink-100">Take a quick selfie so we can match it with your ID.</p>
+                  <p className="mt-1 text-sm text-ink-100">Position your face in the frame so we can verify it's you.</p>
                 </div>
-                <FileDropzone label="Take Selfie" onUpload={(file, previewUrl) => setForm({ ...form, selfie: previewUrl })} />
+                {form.selfie ? (
+                  <div className="flex flex-col items-center mt-6">
+                    <div className="w-full sm:w-[90%] rounded-2xl overflow-hidden border-4 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+                      {/* We remove transform -scale-x-100 here because the collage has already mirrored the images! */}
+                      <img src={form.selfie} alt="4-Direction Liveness Collage" className="w-full h-auto object-cover" />
+                    </div>
+                    <p className="mt-3 text-xs text-ink-300 text-center">4-Direction Liveness Collage (Straight, Left, Right, Down)</p>
+                    <button 
+                      onClick={() => setForm({ ...form, selfie: null })}
+                      className="mt-4 text-sm text-amber-400 hover:text-amber-300 font-medium border border-amber-500/30 px-4 py-2 rounded-lg bg-amber-500/10"
+                    >
+                      Retake Verification
+                    </button>
+                  </div>
+                ) : (
+                  <LivenessCamera onCapture={(dataUrl) => setForm({ ...form, selfie: dataUrl })} />
+                )}
               </motion.div>
             )}
 
@@ -238,7 +521,7 @@ export default function Verification() {
                   </div>
                 </div>
 
-                <FileDropzone label="Photo of your Car" onUpload={(file, previewUrl) => setForm({ ...form, carPhoto: previewUrl })} />
+                <FileDropzone label="Upload Photo of your Car" onUpload={(file, previewUrl, base64Url) => setForm({ ...form, carPhoto: base64Url || previewUrl })} />
               </motion.div>
             )}
           </AnimatePresence>
